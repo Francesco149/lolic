@@ -1,7 +1,8 @@
 /*
- * prototype of my programming language. will likely be completely
- * rewritten as a compiler bootstrapped from nothing once I have a good
- * idea of what I'm doing.
+ * this is my little compiler/parser playground where I experiment while
+ * prototyping my future programming language. once I feel like I'm ready
+ * I will likely rewrite the compiler from scratch properly, unless I
+ * grow attached to this code base for some reason
  *
  * # license
  * this is free and unencumbered software released into the public domain.
