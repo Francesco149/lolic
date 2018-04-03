@@ -8,6 +8,8 @@
  * refer to the attached UNLICENSE or http://unlicense.org/
  */
 
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -127,6 +129,65 @@ void test_buf()
 
 /* --------------------------------------------------------------------- */
 
+struct intern
+{
+    char* str;
+    int len;
+};
+
+typedef struct intern intern_t;
+
+intern_t* interns = 0;
+
+char* istr_r(char* start, char* end)
+{
+    int i;
+    int len;
+    intern_t new;
+
+    len = end - start;
+
+    for (i = 0; i < blen(interns); ++i)
+    {
+        if (len == interns[i].len &&
+            !strncmp(start, interns[i].str, len))
+        {
+            return interns[i].str;
+        }
+    }
+
+    new.str = strndup(start, len);
+    new.len = len;
+    bpush(interns, new);
+
+    return new.str;
+}
+
+char* istr(char* str)
+{
+    return istr_r(str, str + strlen(str));
+}
+
+void test_istr()
+{
+    char a[] = "hello";
+    char b[] = "hello";
+    char c[] = "hello!";
+    char str[] = "foo bar";
+    char sub[] = "foo";
+
+    assert(a != b);
+    assert(istr(a) == istr(b));
+    assert(istr(c) != istr(b));
+    assert(str != sub);
+    assert(istr(sub) == istr_r(str, str + 3));
+    assert(strlen(istr_r(str, str + 3)) == 3);
+
+    log("passed");
+}
+
+/* --------------------------------------------------------------------- */
+
 enum
 {
     TOKEN_LAST_LITERAL = 128,
@@ -145,6 +206,7 @@ struct token
     union
     {
         uint64_t u64;
+        char* name;
         /* ... */
     }
     data;
@@ -213,7 +275,7 @@ char* ldescribe(token_t* tok, char* buf)
         break;
 
     case TOKEN_NAME:
-        sprintf(p, ": %.*s", (int)(ltok.end - ltok.start), ltok.start);
+        sprintf(p, ": %s (%p)", ltok.data.name, ltok.data.name);
         break;
     }
 
@@ -254,6 +316,7 @@ void lnext()
     {
         ltok.kind = TOKEN_NAME;
         for (; *ldata && (isalpha(*ldata) || *ldata == '_'); ++ldata);
+        ltok.data.name = istr_r(ltok.start, ldata);
     }
 
     else {
@@ -265,7 +328,7 @@ void lnext()
 
 void test_lex()
 {
-    char* src = "+()_HELLO1,234+FOO!994memes";
+    char* src = "XY+(XY)_HELLO1,234+FOO!994memes";
     char buf[64];
 
     logf("input: %s", src);
@@ -424,6 +487,7 @@ void tests()
     test_buf();
     test_lex();
     test_p();
+    test_istr();
 }
 #else
 #define tests()
