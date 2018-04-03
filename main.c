@@ -358,9 +358,9 @@ more:
         char* p = dst;
 
         strcpy(dstbak, dst);
+        p += sprintf(p, "(%s %s ", operator, dstbak);
         lnext();
 
-        p += sprintf(p, "(%s %s ", operator, dstbak);
         pterm(p);
         p += strlen(p);
         *p++ = ')';
