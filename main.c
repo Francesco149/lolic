@@ -364,33 +364,40 @@ void pexpect(int token)
     lnext();
 }
 
-void pexpr0(char* dst);
+uint64_t pexpr0(char* dst);
 
-void pexpr3(char *dst)
+uint64_t pexpr3(char *dst)
 {
+    uint64_t val;
+
     switch (ltok.kind)
     {
     case '(':
         lnext();
-        pexpr0(dst);
+        val = pexpr0(dst);
         pexpect(')');
         break;
 
     case TOKEN_INT:
         sprintf(dst, "%ld", ltok.data.u64);
+        val = ltok.data.u64;
         lnext();
         break;
 
     default:
         assertf(0, "unexpected token %s", ldescribe(&ltok, 0));
     }
+
+    return val;
 }
 
-void pexpr2(char *dst)
+uint64_t pexpr2(char *dst)
 {
     char* p = dst;
+    uint64_t val;
+    char op = ltok.kind;
 
-    switch (ltok.kind)
+    switch (op)
     {
     case '-':
     case '~':
@@ -398,21 +405,35 @@ void pexpr2(char *dst)
         *p++ = ltok.kind;
         *p++ = ' ';
         lnext();
-        pexpr2(p);
+        val = pexpr2(p);
         p += strlen(p);
         *p++ = ')';
+
+        if (op == '-') {
+            val = (uint64_t)-val;
+        } else if (op == '~') {
+            val = ~val;
+        } else {
+            assertf(0, "uknown operator %s", lkindstr(op, 0));
+        }
+
         break;
 
     default:
-        pexpr3(p);
+        val = pexpr3(p);
     }
+
+    return val;
 }
 
-void pexpr1(char* dst)
+uint64_t pexpr1(char* dst)
 {
     char* operator;
+    int op;
+    uint64_t val;
 
-    pexpr2(dst);
+    val = pexpr2(dst);
+    op = ltok.kind;
 
 more:
     switch (ltok.kind)
@@ -432,6 +453,8 @@ more:
         operator = (char*)&ltok.kind;
     doterm:
     {
+        uint64_t rval;
+
         /* TODO: endian independent */
         char dstbak[PMAXLINE];
         char* p = dst;
@@ -440,19 +463,39 @@ more:
         p += sprintf(p, "(%s %s ", operator, dstbak);
         lnext();
 
-        pexpr1(p);
+        rval = pexpr1(p);
         p += strlen(p);
         *p++ = ')';
+
+        if (op == '*') {
+            val *= rval;
+        } else if (op == '/') {
+            val /= rval;
+        } else if (op == '%') {
+            val %= rval;
+        } else if (op == '&') {
+            val &= rval;
+        } else if (op == TOKEN_SHR) {
+            val >>= rval;
+        } else if (op == TOKEN_SHL) {
+            val <<= rval;
+        } else {
+            assertf(0, "uknown operator %s", lkindstr(op, 0));
+        }
 
         goto more;
     }
 
     }
+
+    return val;
 }
 
-void pexpr0(char* dst)
+uint64_t pexpr0(char* dst)
 {
-    pexpr1(dst);
+    uint64_t val;
+
+    val = pexpr1(dst);
 
 more:
     switch (ltok.kind)
@@ -462,36 +505,68 @@ more:
     case '^':
     case '|':
     {
-        char operator = (char)ltok.kind;
+        char op = (char)ltok.kind;
         char dstbak[PMAXLINE];
         char* p = dst;
+        uint64_t rval;
 
         strcpy(dstbak, dst);
         lnext();
 
-        p += sprintf(p, "(%c %s ", operator, dstbak);
-        pexpr1(p);
+        p += sprintf(p, "(%c %s ", op, dstbak);
+        rval = pexpr1(p);
         p += strlen(p);
         *p++ = ')';
+
+        if (op == '+') {
+            val += rval;
+        } else if (op == '-') {
+            val -= rval;
+        } else if (op == '^') {
+            val ^= rval;
+        } else if (op == '|') {
+            val |= rval;
+        } else {
+            assertf(0, "uknown operator %s", lkindstr(op, 0));
+        }
 
         goto more;
     }
 
     }
+
+    return val;
+}
+
+void test_pexpr(char* expr, uint64_t expected)
+{
+    uint64_t val;
+    char buf[PMAXLINE];
+
+    logf("input: %s", expr);
+    memset(buf, 0, sizeof(buf));
+    linit(expr);
+    val = pexpr0(buf);
+    assertf(!ltok.kind, "%s", "trailing data?");
+    log(buf);
+    logf("= %lu", val);
+    logf("= 0x%016lX", val);
+    assertf(val == expected, "wrong result, expected %lu", expected);
+    log("passed");
 }
 
 void test_p()
 {
-    char buf[PMAXLINE];
-    char* src = "12*34 + 45/56 + ~25";
-
-    logf("input: %s", src);
-    memset(buf, 0, sizeof(buf));
-    linit(src);
-    pexpr0(buf);
-    assertf(!ltok.kind, "%s", "trailing data?");
-    log(buf);
-    log("passed");
+    test_pexpr("1", 1);
+    test_pexpr("(1)", 1);
+    test_pexpr("1*2+3", 1*2+3);
+    test_pexpr("1*2*3", 1*2*3);
+    test_pexpr("1+2*3", 1+2*3);
+    test_pexpr("12*34 + 45/56 + ~25", 12*34+45/56+~25);
+    test_pexpr("(1 + 2 + 3) * 5 + 10 / (1 + 1)", (1+2+3)*5+10/(1+1));
+    test_pexpr("1<<0", 1<<0);
+    test_pexpr("1<<1", 1<<1);
+    test_pexpr("1<<1|1<<4|1<<32", 1<<1|1<<4|(uint64_t)1<<32);
 }
 
 /* --------------------------------------------------------------------- */
