@@ -407,6 +407,7 @@ void test_p()
     char* src = "12*34 + 45/56 + ~25";
 
     logf("input: %s", src);
+    memset(buf, 0, sizeof(buf));
     ldata = src;
     lnext();
     pexpr(buf);
