@@ -217,6 +217,14 @@ typedef struct token token_t;
 token_t ltok;
 char* ldata;
 
+void lnext();
+
+void linit(char* data)
+{
+    ldata = data;
+    lnext();
+}
+
 char* lkindstr(int kind, char* buf)
 {
     if (!buf)
@@ -332,8 +340,7 @@ void test_lex()
     char buf[64];
 
     logf("input: %s", src);
-    ldata = src;
-    lnext();
+    linit(src);
 
     while (ltok.kind)
     {
@@ -480,8 +487,7 @@ void test_p()
 
     logf("input: %s", src);
     memset(buf, 0, sizeof(buf));
-    ldata = src;
-    lnext();
+    linit(src);
     pexpr0(buf);
     assertf(!ltok.kind, "%s", "trailing data?");
     log(buf);
