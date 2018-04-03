@@ -230,7 +230,7 @@ char* lkindstr(int kind, char* buf)
 
     if (kind <= TOKEN_LAST_LITERAL)
     {
-        sprintf(buf, "'%c'", (char)kind);
+        sprintf(buf, "'%c' '\\x%02X'", (char)kind, kind);
         goto done;
     }
 
