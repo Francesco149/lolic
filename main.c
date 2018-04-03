@@ -105,6 +105,8 @@ void test_buf()
 
     enum { N = 1024, M = 7 };
 
+    assert(blen(a) == 0);
+
     for (i = 0; i < N; ++i) {
         bpush(a, i * M);
     }
@@ -116,6 +118,7 @@ void test_buf()
     }
 
     bfree(a);
+    assert(!a);
     log("passed");
 }
 
