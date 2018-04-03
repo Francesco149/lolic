@@ -139,17 +139,13 @@ enum
 struct token
 {
     int kind;
+    char* start;
+    char* end;
 
     union
     {
         uint64_t u64;
-
-        struct
-        {
-            char* start;
-            char* end;
-        }
-        str;
+        /* ... */
     }
     data;
 };
@@ -217,9 +213,7 @@ char* ldescribe(token_t* tok, char* buf)
         break;
 
     case TOKEN_NAME:
-        sprintf(p, ": %.*s",
-            (int)(ltok.data.str.end - ltok.data.str.start),
-            ltok.data.str.start);
+        sprintf(p, ": %.*s", (int)(ltok.end - ltok.start), ltok.start);
         break;
     }
 
@@ -229,6 +223,8 @@ char* ldescribe(token_t* tok, char* buf)
 void lnext()
 {
     for (; isspace(*ldata); ++ldata);
+
+    ltok.start = ldata;
 
     if (isdigit(*ldata))
     {
@@ -257,16 +253,14 @@ void lnext()
     else if (isalpha(*ldata) || *ldata == '_')
     {
         ltok.kind = TOKEN_NAME;
-        ltok.data.str.start = ldata;
-
         for (; *ldata && (isalpha(*ldata) || *ldata == '_'); ++ldata);
-
-        ltok.data.str.end = ldata;
     }
 
     else {
         ltok.kind = *ldata++;
     }
+
+    ltok.end = ldata;
 }
 
 void test_lex()
