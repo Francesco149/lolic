@@ -438,7 +438,6 @@ uint64_t pexpr2(char *dst)
 
 uint64_t pexpr1(char* dst)
 {
-    char* operator;
     int op;
     uint64_t val;
 
@@ -449,28 +448,22 @@ more:
     switch (ltok.kind)
     {
     case TOKEN_SHR:
-        operator = ">>";
-        goto doterm;
-
     case TOKEN_SHL:
-        operator = "<<";
-        goto doterm;
-
     case '*':
     case '/':
     case '%':
     case '&':
-        operator = (char*)&ltok.kind;
-    doterm:
     {
         uint64_t rval;
 
-        /* TODO: endian independent */
         char dstbak[PMAXLINE];
         char* p = dst;
 
         strcpy(dstbak, dst);
-        p += sprintf(p, "(%s %s ", operator, dstbak);
+
+        p += sprintf(p, "(%.*s %s ",
+            (int)(ltok.end - ltok.start), ltok.start, dstbak);
+
         lnext();
 
         rval = pexpr1(p);
