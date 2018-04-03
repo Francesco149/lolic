@@ -138,6 +138,16 @@ struct intern
 typedef struct intern intern_t;
 
 intern_t* interns = 0;
+char* string_shl;
+char* string_shr;
+
+char* istr(char* str);
+
+void init_interns()
+{
+    string_shl = istr("<<");
+    string_shr = istr(">>");
+}
 
 char* istr_r(char* start, char* end)
 {
@@ -308,13 +318,13 @@ void lnext()
         }
     }
 
-    else if (!strncmp(ldata, "<<", 2))
+    else if (istr_r(ldata, ldata + 2) == string_shl)
     {
         ltok.kind = TOKEN_SHL;
         ldata += 2;
     }
 
-    else if (!strncmp(ldata, ">>", 2))
+    else if (istr_r(ldata, ldata + 2) == string_shr)
     {
         ltok.kind = TOKEN_SHR;
         ldata += 2;
@@ -571,6 +581,11 @@ void test_p()
 
 /* --------------------------------------------------------------------- */
 
+void init()
+{
+    init_interns();
+}
+
 #ifdef LOLIC_DEBUG
 void tests()
 {
@@ -585,6 +600,7 @@ void tests()
 
 int main(int argc, char* argv[])
 {
+    init();
     tests();
 
     return 0;
