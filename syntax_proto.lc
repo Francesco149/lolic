@@ -1,0 +1,63 @@
+
+void: make_packet(uint8*: p)
+{
+    push(uint32*: p, 10); // same as *(uint32*)p = 10; p += sizeof(uint32);
+    push(uint32*: p, 255);
+    push(uint16*: p, 0xFFFF);
+    push(uint16*: p, 0);
+    push(p, 'a');
+    push(p, 'z');
+}
+
+"hello world!\n";
+
+uint8[16]: packet;
+make_packet(packet);
+
+[ "this is the packet (%d bytes): %*X", lenof(packet), packet ];
+
+// hello world!
+// [test.lc:17] this is the packet (16 bytes): 0A 00 00 00 FF 00 00 00 FF
+// FF 00 00 00 00 61 7A
+
+// ------------------------------------------------------------------------
+
+uint64: varg_test(...)
+{
+    for (uint64: i = 0; i < argc; ++i) {
+        "%d: %s ", int8*: argv[i];
+    }
+
+    '\n';
+
+    return argc;
+}
+
+uint64: n = varg_test("hello", "this", "is", "a", "test");
+"%d args passed\n", n;
+
+// hello this is a test
+// 5 args passed
+
+// ------------------------------------------------------------------------
+
+// switch with no implicit fallthrough. if you don't want to use switch
+// and still have fallthrough you can explicitly add "fallthrough;"
+// anywhere in the case you want that to happen
+
+void: describe_char(int8: c)
+{
+    pick (c)
+    {
+    case 'a' ... 'z':
+    case 'A' ... 'Z':
+        "letter";
+    case '0' ... '9':
+        "number";
+    default:
+        "other";
+    }
+
+    "\n";
+}
+
