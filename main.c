@@ -415,7 +415,7 @@ uint64_t pexpr2(char *dst)
         *p++ = ltok.kind;
         *p++ = ' ';
         lnext();
-        val = pexpr2(p);
+        val = pexpr3(p);
         p += strlen(p);
         *p++ = ')';
 
