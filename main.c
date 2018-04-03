@@ -357,9 +357,9 @@ void pexpect(int token)
     lnext();
 }
 
-void pexpr(char* dst);
+void pexpr0(char* dst);
 
-void pfactor(char *dst)
+void pexpr2(char *dst)
 {
     char* p = dst;
 
@@ -367,7 +367,7 @@ void pfactor(char *dst)
     {
     case '(':
         lnext();
-        pexpr(p);
+        pexpr0(p);
         pexpect(')');
         break;
 
@@ -377,7 +377,7 @@ void pfactor(char *dst)
         *p++ = ltok.kind;
         *p++ = ' ';
         lnext();
-        pfactor(p);
+        pexpr2(p);
         p += strlen(p);
         *p++ = ')';
         break;
@@ -392,11 +392,11 @@ void pfactor(char *dst)
     }
 }
 
-void pterm(char* dst)
+void pexpr1(char* dst)
 {
     char* operator;
 
-    pfactor(dst);
+    pexpr2(dst);
 
 more:
     switch (ltok.kind)
@@ -424,7 +424,7 @@ more:
         p += sprintf(p, "(%s %s ", operator, dstbak);
         lnext();
 
-        pterm(p);
+        pexpr1(p);
         p += strlen(p);
         *p++ = ')';
 
@@ -434,9 +434,9 @@ more:
     }
 }
 
-void pexpr(char* dst)
+void pexpr0(char* dst)
 {
-    pterm(dst);
+    pexpr1(dst);
 
 more:
     switch (ltok.kind)
@@ -454,7 +454,7 @@ more:
         lnext();
 
         p += sprintf(p, "(%c %s ", operator, dstbak);
-        pterm(p);
+        pexpr1(p);
         p += strlen(p);
         *p++ = ')';
 
@@ -473,7 +473,7 @@ void test_p()
     memset(buf, 0, sizeof(buf));
     ldata = src;
     lnext();
-    pexpr(buf);
+    pexpr0(buf);
     assertf(!ltok.kind, "%s", "trailing data?");
     log(buf);
     log("passed");
