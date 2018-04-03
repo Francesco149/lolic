@@ -359,18 +359,32 @@ void pexpect(int token)
 
 void pexpr0(char* dst);
 
+void pexpr3(char *dst)
+{
+    switch (ltok.kind)
+    {
+    case '(':
+        lnext();
+        pexpr0(dst);
+        pexpect(')');
+        break;
+
+    case TOKEN_INT:
+        sprintf(dst, "%ld", ltok.data.u64);
+        lnext();
+        break;
+
+    default:
+        assertf(0, "unexpected token %s", ldescribe(&ltok, 0));
+    }
+}
+
 void pexpr2(char *dst)
 {
     char* p = dst;
 
     switch (ltok.kind)
     {
-    case '(':
-        lnext();
-        pexpr0(p);
-        pexpect(')');
-        break;
-
     case '-':
     case '~':
         *p++ = '(';
@@ -382,13 +396,8 @@ void pexpr2(char *dst)
         *p++ = ')';
         break;
 
-    case TOKEN_INT:
-        sprintf(p, "%ld", ltok.data.u64);
-        lnext();
-        break;
-
     default:
-        assertf(0, "unexpected token %s", ldescribe(&ltok, 0));
+        pexpr3(p);
     }
 }
 
