@@ -118,7 +118,10 @@ void test_buf()
     }
 
     bfree(a);
+
     assert(!a);
+    assert(!blen(a));
+
     log("passed");
 }
 
