@@ -79,6 +79,7 @@ void* bgrw(void* x, int len, int elem_size)
     int cap;
     bufhdr_t* hdr;
 
+    assert(bcap(x) <= (0x7FFFFFFF / 2));
     cap = max(2 * bcap(x) + 1, len);
     assert(cap >= len);
 
