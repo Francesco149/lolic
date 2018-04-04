@@ -209,9 +209,18 @@ enum
     TOKEN_NAME,
 };
 
+enum
+{
+    MOD_HEX = 1,
+    MOD_OCT,
+    MOD_BIN,
+    MOD_CHR,
+};
+
 struct token
 {
     int kind;
+    int modifier;
     char* start;
     char* end;
 
@@ -310,10 +319,11 @@ char* ldescribe(token_t* tok, char* buf)
     return buf;
 }
 
-uint64_t linteger()
+void linteger()
 {
     int base = 10;
     uint64_t val;
+    int mod = 0;
 
     val = 0;
 
@@ -321,13 +331,23 @@ uint64_t linteger()
     {
         ++ldata;
 
-        if (tolower(*ldata) == 'x') {
+        if (tolower(*ldata) == 'x')
+        {
             base = 16;
+            mod = MOD_HEX;
             ++ldata;
-        } else if (isdigit(*ldata)) {
+        }
+
+        else if (isdigit(*ldata))
+        {
             base = 8;
-        } else if (tolower(*ldata) == 'b') {
+            mod = MOD_HEX;
+        }
+
+        else if (tolower(*ldata) == 'b')
+        {
             base = 2;
+            mod = MOD_BIN;
             ++ldata;
         }
     }
@@ -353,10 +373,12 @@ uint64_t linteger()
         val += digit;
     }
 
-    return val;
+    ltok.kind = TOKEN_INT;
+    ltok.modifier = mod;
+    ltok.data.u64 = val;
 }
 
-double lfloat()
+void lfloat()
 {
     char* start = ldata;
 
@@ -380,31 +402,35 @@ double lfloat()
         for (; isdigit(*ldata); ++ldata);
     }
 
-    return strtod(start, 0);
+    ltok.kind = TOKEN_FLOAT;
+    ltok.data.f64 = strtod(start, 0);
 }
 
 void lnext()
 {
     for (; isspace(*ldata); ++ldata);
 
+    ltok.modifier = 0;
     ltok.start = ldata;
 
-    if (isdigit(*ldata) || *ldata == '.')
+    if (*ldata == '.') {
+        lfloat();
+    }
+
+    else if (isdigit(*ldata))
     {
         for (; isdigit(*ldata); ++ldata);
 
         if (*ldata == '.' || tolower(*ldata) == 'e')
         {
             ldata = ltok.start;
-            ltok.kind = TOKEN_FLOAT;
-            ltok.data.f64 = lfloat();
+            lfloat();
         }
 
         else
         {
             ldata = ltok.start;
-            ltok.kind = TOKEN_INT;
-            ltok.data.u64 = linteger();
+            linteger();
         }
     }
 
