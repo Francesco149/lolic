@@ -303,25 +303,29 @@ char* ldescribe(token_t* tok, char* buf)
     return buf;
 }
 
+void linteger()
+{
+    ltok.kind = TOKEN_INT;
+    ltok.data.u64 = 0;
+
+    while (isdigit(*ldata))
+    {
+        int digit = *ldata++ - '0';
+
+        assert(ltok.data.u64 <= (UINT64_MAX - digit) / 10);
+        ltok.data.u64 *= 10;
+        ltok.data.u64 += digit;
+    }
+}
+
 void lnext()
 {
     for (; isspace(*ldata); ++ldata);
 
     ltok.start = ldata;
 
-    if (isdigit(*ldata))
-    {
-        ltok.kind = TOKEN_INT;
-        ltok.data.u64 = 0;
-
-        while (isdigit(*ldata))
-        {
-            int digit = *ldata++ - '0';
-
-            assert(ltok.data.u64 <= (UINT64_MAX - digit) / 10);
-            ltok.data.u64 *= 10;
-            ltok.data.u64 += digit;
-        }
+    if (isdigit(*ldata)) {
+        linteger();
     }
 
     else if (istr_r(ldata, ldata + 2) == string_shl)
