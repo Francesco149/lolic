@@ -207,6 +207,7 @@ enum
     TOKEN_INT,
     TOKEN_FLOAT,
     TOKEN_NAME,
+    TOKEN_STRING,
 };
 
 enum
@@ -229,7 +230,7 @@ struct token
         uint64_t u64;
         double f64;
         char* name;
-        /* ... */
+        char* string;
     }
     data;
 };
@@ -272,6 +273,7 @@ char* lkindstr(int kind, char* buf)
     c(INT);
     c(FLOAT);
     c(NAME);
+    c(STRING);
     c(SHL);
     c(SHR);
 
@@ -313,6 +315,10 @@ char* ldescribe(token_t* tok, char* buf)
 
     case TOKEN_NAME:
         sprintf(p, ": %s (%p)", ltok.data.name, ltok.data.name);
+        break;
+
+    case TOKEN_STRING:
+        sprintf(p, ": %s", ltok.data.string);
         break;
     }
 
@@ -406,6 +412,88 @@ void lfloat()
     ltok.data.f64 = strtod(start, 0);
 }
 
+#define lexpect(c) \
+    assertf(*ldata == c, "expected '%c', got '%c'", c, *ldata); \
+    ++ldata
+
+char escape_to_char[255];
+
+void lstatic_init()
+{
+    memset(escape_to_char, 0, sizeof(escape_to_char));
+    escape_to_char['n'] = '\n';
+    escape_to_char['r'] = '\r';
+    escape_to_char['t'] = '\t';
+    escape_to_char['v'] = '\v';
+    escape_to_char['b'] = '\b';
+    escape_to_char['a'] = '\a';
+    escape_to_char['\\'] = '\\';
+    escape_to_char['\''] = '\'';
+}
+
+char lchar()
+{
+    char val;
+
+    assertf(*ldata != '\n', "%s",
+        "string or char literal cannot contain newline");
+
+    if (*ldata == '\\')
+    {
+        ++ldata;
+        val = escape_to_char[(int)*ldata];
+        assertf(val || *ldata == '0', "invalid escape sequence %c",
+            *ldata);
+        ++ldata;
+    }
+
+    else {
+        val = *ldata++;
+    }
+
+    return val;
+}
+
+void lchar_literal()
+{
+    char val;
+
+    lexpect('\'');
+    assertf(*ldata != '\'', "%s", "empty char literal");
+    val = lchar();
+    lexpect('\'');
+
+    ltok.kind = TOKEN_INT;
+    ltok.modifier = MOD_CHR;
+    ltok.data.u64 = val;
+}
+
+void lstring_literal()
+{
+    char* str = 0;
+
+    lexpect('"');
+
+    while (*ldata && *ldata != '"')
+    {
+        char c;
+
+        c = lchar();
+        if (!c) {
+            break;
+        }
+
+        bpush(str, c);
+    }
+
+    bpush(str, 0);
+
+    lexpect('"');
+
+    ltok.kind = TOKEN_STRING;
+    ltok.data.string = str;
+}
+
 void lnext()
 {
     for (; isspace(*ldata); ++ldata);
@@ -417,6 +505,14 @@ void lnext()
     {
     case '.':
         lfloat();
+        break;
+
+    case '\'':
+        lchar_literal();
+        break;
+
+    case '"':
+        lstring_literal();
         break;
 
     case '0' ... '9':
@@ -474,6 +570,12 @@ void lnext()
         ldescribe(&ltok, 0), s, s); \
     lnext()
 
+#define lassert_str(s) \
+    assertf(ltok.kind == TOKEN_STRING && !strcmp(ltok.data.string, s), \
+        "unexpected token. got %s, expected STRING: %s (%p)", \
+        ldescribe(&ltok, 0), s, s); \
+    lnext()
+
 #define lassert_int(i) \
     assertf(ltok.kind == TOKEN_INT && ltok.data.u64 == i, \
         "unexpected token. got %s, expected INT: %lu", \
@@ -488,7 +590,7 @@ void lnext()
 
 void test_lex()
 {
-    char* src = "XY+(XY)_HELLO1,234+FOO!994memes";
+    char* src = "XY+(XY)_HELLO1,234+FOO!994memes,\"hello world\\n\"";
 
     logf("input: %s", src);
     linit(src);
@@ -506,6 +608,8 @@ void test_lex()
     lassert_lit('!');
     lassert_int(994);
     lassert_name("memes");
+    lassert_lit(',');
+    lassert_str("hello world\n");
     lassert_lit(0);
 
     log("(passed)");
@@ -910,6 +1014,8 @@ void test_p()
     f(1.5E10);
     f(1.5E+10);
     f(1.5E-3);
+    i('a');
+    i('\'');
 #undef i
 #undef f
 #undef b
@@ -920,6 +1026,7 @@ void test_p()
 void init()
 {
     init_interns();
+    lstatic_init();
 }
 
 #ifdef LOLIC_DEBUG
