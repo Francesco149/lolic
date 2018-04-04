@@ -317,6 +317,8 @@ uint64_t linteger()
         if (tolower(*ldata) == 'x') {
             base = 16;
             ++ldata;
+        } else if (isdigit(*ldata)) {
+            base = 8;
         }
     }
 
@@ -810,6 +812,9 @@ void test_p()
     t(0xFFFFFFFF);
     t(0x7FFFFFFF);
     t(0xFFFFFFFFFFFFFFFF);
+    t(00755);
+    t(00666);
+    t(00777);
 #undef t
 }
 
