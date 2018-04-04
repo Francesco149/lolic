@@ -303,12 +303,12 @@ char* ldescribe(token_t* tok, char* buf)
     return buf;
 }
 
-void linteger()
+uint64_t linteger()
 {
     int base = 10;
+    uint64_t val;
 
-    ltok.kind = TOKEN_INT;
-    ltok.data.u64 = 0;
+    val = 0;
 
     if (*ldata == '0')
     {
@@ -335,10 +335,12 @@ void linteger()
             digit = 10 + tolower(*ldata++) - 'a';
         }
 
-        assert(ltok.data.u64 <= (UINT64_MAX - digit) / base);
-        ltok.data.u64 *= base;
-        ltok.data.u64 += digit;
+        assert(val <= (UINT64_MAX - digit) / base);
+        val *= base;
+        val += digit;
     }
+
+    return val;
 }
 
 void lnext()
@@ -347,8 +349,10 @@ void lnext()
 
     ltok.start = ldata;
 
-    if (isdigit(*ldata)) {
-        linteger();
+    if (isdigit(*ldata))
+    {
+        ltok.kind = TOKEN_INT;
+        ltok.data.u64 = linteger();
     }
 
     else if (istr_r(ldata, ldata + 2) == string_shl)
