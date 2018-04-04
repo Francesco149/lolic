@@ -334,7 +334,11 @@ void lnext()
     else if (isalpha(*ldata) || *ldata == '_')
     {
         ltok.kind = TOKEN_NAME;
-        for (; *ldata && (isalpha(*ldata) || *ldata == '_'); ++ldata);
+
+        while (isalpha(*ldata) || isdigit(*ldata) || *ldata == '_') {
+            ++ldata;
+        }
+
         ltok.data.name = istr_r(ltok.start, ldata);
     }
 
@@ -345,20 +349,44 @@ void lnext()
     ltok.end = ldata;
 }
 
+#define lassert_name(s) \
+    assertf(ltok.kind == TOKEN_NAME && ltok.data.name == istr(s), \
+        "unexpected token. got %s, expected NAME: %s (%p)", \
+        ldescribe(&ltok, 0), s, s); \
+    lnext()
+
+#define lassert_int(i) \
+    assertf(ltok.kind == TOKEN_INT && ltok.data.u64 == i, \
+        "unexpected token. got %s, expected INT: %lu", \
+        ldescribe(&ltok, 0), (uint64_t)i); \
+    lnext()
+
+#define lassert_lit(c) \
+    assertf(ltok.kind == c, \
+        "unexpected token. got %s, expected %s", \
+        ldescribe(&ltok, 0), lkindstr(c, 0)); \
+    lnext()
+
 void test_lex()
 {
     char* src = "XY+(XY)_HELLO1,234+FOO!994memes";
-    char buf[64];
 
     logf("input: %s", src);
     linit(src);
 
-    while (ltok.kind)
-    {
-        ldescribe(&ltok, buf);
-        log(buf);
-        lnext();
-    }
+    lassert_name("XY");
+    lassert_lit('+');
+    lassert_lit('(');
+    lassert_name("XY");
+    lassert_lit(')');
+    lassert_name("_HELLO1");
+    lassert_lit(',');
+    lassert_int(234);
+    lassert_lit('+');
+    lassert_name("FOO");
+    lassert_lit('!');
+    lassert_int(994);
+    lassert_name("memes");
 
     log("(passed)");
 }
