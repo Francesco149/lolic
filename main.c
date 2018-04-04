@@ -856,10 +856,12 @@ void test_p()
     i(0xFFFFFFFF);
     i(0x7FFFFFFF);
     i(0xFFFFFFFFFFFFFFFF);
+    i(0XDEADBEEFBADDCAFE);
     i(0755);
     i(0666);
     i(0777);
     b("0b11", 3);
+    b("0B11", 3);
     b("0b11111111", 0xFF);
     b("0b1111111111111111", 0xFFFF);
     b("0b1000000000000000", 0x8000);
