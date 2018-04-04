@@ -331,11 +331,12 @@ uint64_t linteger()
         if (*ldata <= '9') {
             digit = *ldata++ - '0';
         } else {
-            assert(base == 16);
             digit = 10 + tolower(*ldata++) - 'a';
         }
 
+        assert(digit < base);
         assert(val <= (UINT64_MAX - digit) / base);
+
         val *= base;
         val += digit;
     }
