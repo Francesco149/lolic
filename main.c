@@ -256,6 +256,8 @@ char* lkindstr(int kind, char* buf)
 #define c(x) case TOKEN_##x: strcpy(buf, #x); break
     switch (kind)
     {
+    case 0: strcpy(buf, "EOF"); break;
+
     c(INT);
     c(NAME);
     c(SHL);
@@ -387,6 +389,7 @@ void test_lex()
     lassert_lit('!');
     lassert_int(994);
     lassert_name("memes");
+    lassert_lit(0);
 
     log("(passed)");
 }
