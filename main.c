@@ -413,12 +413,13 @@ void lnext()
     ltok.modifier = 0;
     ltok.start = ldata;
 
-    if (*ldata == '.') {
-        lfloat();
-    }
-
-    else if (isdigit(*ldata))
+    switch (*ldata)
     {
+    case '.':
+        lfloat();
+        break;
+
+    case '0' ... '9':
         for (; isdigit(*ldata); ++ldata);
 
         if (*ldata == '.' || tolower(*ldata) == 'e')
@@ -432,22 +433,11 @@ void lnext()
             ldata = ltok.start;
             linteger();
         }
-    }
+        break;
 
-    else if (istr_r(ldata, ldata + 2) == string_shl)
-    {
-        ltok.kind = TOKEN_SHL;
-        ldata += 2;
-    }
-
-    else if (istr_r(ldata, ldata + 2) == string_shr)
-    {
-        ltok.kind = TOKEN_SHR;
-        ldata += 2;
-    }
-
-    else if (isalpha(*ldata) || *ldata == '_')
-    {
+    case 'a' ... 'z':
+    case 'A' ... 'Z':
+    case '_':
         ltok.kind = TOKEN_NAME;
 
         while (isalpha(*ldata) || isdigit(*ldata) || *ldata == '_') {
@@ -455,10 +445,24 @@ void lnext()
         }
 
         ltok.data.name = istr_r(ltok.start, ldata);
-    }
+        break;
 
-    else {
-        ltok.kind = *ldata++;
+    default:
+        if (istr_r(ldata, ldata + 2) == string_shl)
+        {
+            ltok.kind = TOKEN_SHL;
+            ldata += 2;
+        }
+
+        else if (istr_r(ldata, ldata + 2) == string_shr)
+        {
+            ltok.kind = TOKEN_SHR;
+            ldata += 2;
+        }
+
+        else {
+            ltok.kind = *ldata++;
+        }
     }
 
     ltok.end = ldata;
