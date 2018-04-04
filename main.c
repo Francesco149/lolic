@@ -423,8 +423,8 @@ enum
 };
 
 #define VM_MAXCODE 1024 * 1024
-char vm_code[VM_MAXCODE];
-char* vm_ip = vm_code;
+uint8_t vm_code[VM_MAXCODE];
+uint8_t * vm_ip = vm_code;
 
 #define VM_MAXSTACK 8191
 uint64_t vm_stack[VM_MAXSTACK + 1];
