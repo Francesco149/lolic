@@ -319,6 +319,9 @@ uint64_t linteger()
             ++ldata;
         } else if (isdigit(*ldata)) {
             base = 8;
+        } else if (*ldata == 'b') {
+            base = 2;
+            ++ldata;
         }
     }
 
@@ -815,6 +818,13 @@ void test_p()
     t(0755);
     t(0666);
     t(0777);
+    test_pexpr("0b11", 3);
+    test_pexpr("0b11111111", 0xFF);
+    test_pexpr("0b1111111111111111", 0xFFFF);
+    test_pexpr("0b1000000000000000", 0x8000);
+    test_pexpr("0b11111111111111111111111111111111", 0xFFFFFFFF);
+    test_pexpr("0b11111111111111111111111111111111"
+        "11111111111111111111111111111111", 0xFFFFFFFFFFFFFFFF);
 #undef t
 }
 
