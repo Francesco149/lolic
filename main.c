@@ -305,18 +305,40 @@ char* ldescribe(token_t* tok, char* buf)
 
 void linteger()
 {
+    int base = 10;
+
     ltok.kind = TOKEN_INT;
     ltok.data.u64 = 0;
 
-    do
+    if (*ldata == '0')
     {
-        int digit = *ldata++ - '0';
+        ++ldata;
 
-        assert(ltok.data.u64 <= (UINT64_MAX - digit) / 10);
-        ltok.data.u64 *= 10;
+        if (tolower(*ldata) == 'x') {
+            base = 16;
+            ++ldata;
+        }
+    }
+
+    if (base != 10) {
+        assertf(isxdigit(*ldata), "%s", "integer prefix with no value");
+    }
+
+    while (isxdigit(*ldata))
+    {
+        int digit;
+
+        if (*ldata <= '9') {
+            digit = *ldata++ - '0';
+        } else {
+            assert(base == 16);
+            digit = 10 + tolower(*ldata++) - 'a';
+        }
+
+        assert(ltok.data.u64 <= (UINT64_MAX - digit) / base);
+        ltok.data.u64 *= base;
         ltok.data.u64 += digit;
     }
-    while (isdigit(*ldata));
 }
 
 void lnext()
@@ -779,6 +801,9 @@ void test_p()
     t(1+-3);
     t(1-2-3);
     test_pexpr("18446744073709551615", ~0);
+    t(0xFFFF);
+    t(0xFFFFFFFF);
+    t(0x7FFFFFFF);
 #undef t
 }
 
