@@ -319,7 +319,7 @@ uint64_t linteger()
             ++ldata;
         } else if (isdigit(*ldata)) {
             base = 8;
-        } else if (*ldata == 'b') {
+        } else if (tolower(*ldata) == 'b') {
             base = 2;
             ++ldata;
         }
