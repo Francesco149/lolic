@@ -388,7 +388,7 @@ void lnext()
 
     ltok.start = ldata;
 
-    if (isdigit(*ldata))
+    if (isdigit(*ldata) || *ldata == '.')
     {
         for (; isdigit(*ldata); ++ldata);
 
@@ -869,6 +869,8 @@ void test_p()
     f(1337.1337+420.420+69.69);
     f(1.0/2.0);
     f((1.0+3.0*3.0)/2.0);
+    f(420.);
+    f(.420);
 #undef i
 #undef f
 #undef b
