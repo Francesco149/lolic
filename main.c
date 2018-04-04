@@ -804,6 +804,7 @@ void test_p()
     t(0xFFFF);
     t(0xFFFFFFFF);
     t(0x7FFFFFFF);
+    t(0xFFFFFFFFFFFFFFFF);
 #undef t
 }
 
