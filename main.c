@@ -299,7 +299,7 @@ char* ldescribe(token_t* tok, char* buf)
         break;
 
     case TOKEN_FLOAT:
-        sprintf(p, ": %.17g", ltok.data.f64);
+        sprintf(p, ": %.17f", ltok.data.f64);
         break;
 
     case TOKEN_NAME:
@@ -538,7 +538,7 @@ char* pdescribe(operand_t* op, char* dst)
         break;
 
     case OPERAND_FLOAT:
-        sprintf(p, "%.17g", op->data.f64);
+        sprintf(p, "%.17f", op->data.f64);
         break;
     }
 
@@ -573,7 +573,7 @@ void pexpr3(operand_t* dst, char *lisp)
         break;
 
     case TOKEN_FLOAT:
-        sprintf(lisp, "%.17g", ltok.data.f64);
+        sprintf(lisp, "%f", ltok.data.f64);
         dst->kind = OPERAND_FLOAT;
         dst->data.f64 = ltok.data.f64;
         lnext();
@@ -812,9 +812,9 @@ void test_pexpr(char* expr, void* pexpected, int expected_kind)
         double val = res.data.f64;
         double expected = *(double*)pexpected;
 
-        logf("= %.17g", val);
+        logf("= %f", val);
         assertf(val == expected,
-            "wrong result, expected %.17g", (double)expected);
+            "wrong result, expected %f", (double)expected);
         break;
     }
     }
@@ -867,6 +867,8 @@ void test_p()
         "11111111111111111111111111111111", 0xFFFFFFFFFFFFFFFF);
     f(3.14);
     f(1337.1337+420.420+69.69);
+    f(1.0/2.0);
+    f((1.0+3.0*3.0)/2.0);
 #undef i
 #undef f
 #undef b
