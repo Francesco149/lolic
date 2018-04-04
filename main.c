@@ -318,7 +318,7 @@ void lnext()
         {
             int digit = *ldata++ - '0';
 
-            assert(ltok.data.u64 <= (SIZE_MAX - digit) / 10);
+            assert(ltok.data.u64 <= (UINT64_MAX - digit) / 10);
             ltok.data.u64 *= 10;
             ltok.data.u64 += digit;
         }
