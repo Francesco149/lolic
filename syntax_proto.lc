@@ -25,7 +25,7 @@ make_packet(packet);
 uint64: varg_test(...)
 {
     for (uint64: i = 0; i < argc; ++i) {
-        "%d: %s ", i, int8*: argv[i];
+        "%d: %s ", i, (int8*)argv[i];
     }
 
     '\n';
