@@ -482,153 +482,6 @@ void test_lex()
 
 /* --------------------------------------------------------------------- */
 
-enum
-{
-    OP_HLT,
-    OP_LIT,
-    OP_ADD,
-    OP_SUB,
-    OP_XOR,
-    OP_OR,
-    OP_MUL,
-    OP_DIV,
-    OP_MOD,
-    OP_AND,
-    OP_SHL,
-    OP_SHR,
-    OP_NEG,
-    OP_NOT,
-};
-
-#define VM_MAXCODE 1024 * 1024
-uint8_t vm_code[VM_MAXCODE];
-uint8_t * vm_ip = vm_code;
-
-#define VM_MAXSTACK 8191
-uint64_t vm_stack[VM_MAXSTACK + 1];
-int vm_sp = 0;
-
-void vm_reset()
-{
-    vm_ip = vm_code;
-    vm_sp = 0;
-}
-
-#define vm_chkpush(n) \
-    assertf(vm_sp + (n) <= VM_MAXSTACK, "%s", "stack overflow");
-
-#define vm_chkpop(n) \
-    assertf(vm_sp >= (n), "%s", "stack underflow");
-
-#define vm_push(x) vm_stack[vm_sp++] = (x)
-#define vm_pop() vm_stack[--vm_sp]
-
-uint64_t vm_read8()
-{
-    uint64_t val;
-
-    assert(vm_ip + 8 <= vm_code + VM_MAXCODE && vm_ip >= vm_code);
-
-    val =
-        ((uint64_t)vm_ip[0] <<  0) |
-        ((uint64_t)vm_ip[1] <<  8) |
-        ((uint64_t)vm_ip[2] << 16) |
-        ((uint64_t)vm_ip[3] << 24) |
-        ((uint64_t)vm_ip[4] << 32) |
-        ((uint64_t)vm_ip[5] << 40) |
-        ((uint64_t)vm_ip[6] << 48) |
-        ((uint64_t)vm_ip[7] << 56);
-
-    vm_ip += 8;
-
-    return val;
-}
-
-void vm_write8(uint64_t val)
-{
-    assert(vm_ip + 8 <= vm_code + VM_MAXCODE && vm_ip >= vm_code);
-
-    vm_ip[0] = (val >>  0) & 0xFF;
-    vm_ip[1] = (val >>  8) & 0xFF;
-    vm_ip[2] = (val >> 16) & 0xFF;
-    vm_ip[3] = (val >> 24) & 0xFF;
-    vm_ip[4] = (val >> 32) & 0xFF;
-    vm_ip[5] = (val >> 40) & 0xFF;
-    vm_ip[6] = (val >> 48) & 0xFF;
-    vm_ip[7] = (val >> 56) & 0xFF;
-
-    vm_ip += 8;
-}
-
-uint64_t vm_exec()
-{
-    char op;
-    uint64_t lval, rval;
-
-    while (1)
-    {
-        assert(vm_ip <= vm_code + VM_MAXCODE && vm_ip >= vm_code);
-        op = *vm_ip++;
-
-        switch (op)
-        {
-        case OP_HLT:
-            log("HLT");
-            vm_chkpop(1);
-            return vm_pop();
-
-        case OP_LIT:
-            lval = vm_read8();
-            logf("LIT %lu", lval);
-            vm_chkpush(1);
-            vm_push(lval);
-            break;
-
-        case OP_ADD:
-        case OP_SUB:
-        case OP_XOR:
-        case OP_OR:
-        case OP_MUL:
-        case OP_DIV:
-        case OP_MOD:
-        case OP_AND:
-        case OP_SHL:
-        case OP_SHR:
-            vm_chkpop(2);
-            rval = vm_pop();
-            lval = vm_pop();
-
-                 if (op == OP_ADD) vm_push(lval +  rval), log("ADD");
-            else if (op == OP_SUB) vm_push(lval -  rval), log("SUB");
-            else if (op == OP_XOR) vm_push(lval ^  rval), log("XOR");
-            else if (op == OP_OR ) vm_push(lval |  rval), log("OR");
-            else if (op == OP_MUL) vm_push(lval *  rval), log("MUL");
-            else if (op == OP_DIV) vm_push(lval /  rval), log("DIV");
-            else if (op == OP_MOD) vm_push(lval %  rval), log("MOD");
-            else if (op == OP_AND) vm_push(lval &  rval), log("AND");
-            else if (op == OP_SHL) vm_push(lval << rval), log("SHL");
-            else if (op == OP_SHR) vm_push(lval >> rval), log("SHR");
-            break;
-
-        case OP_NEG:
-        case OP_NOT:
-            vm_chkpop(1);
-            lval = vm_pop();
-            vm_push(op == OP_NEG ? -lval : ~lval);
-            log(op == OP_NEG ? "NEG" : "NOT");
-            break;
-
-        default:
-            assertf(0, "invalid opcode %02X", op);
-            return -1;
-        }
-    }
-
-    return -1;
-}
-
-/* --------------------------------------------------------------------- */
-
 #define PMAXLINE 4096
 
 void pexpect(int token)
@@ -656,8 +509,6 @@ uint64_t pexpr3(char *dst)
     case TOKEN_INT:
         sprintf(dst, "%ld", ltok.data.u64);
         val = ltok.data.u64;
-        *vm_ip++ = OP_LIT;
-        vm_write8(val);
         lnext();
         break;
 
@@ -687,9 +538,9 @@ uint64_t pexpr2(char *dst)
         *p++ = ')';
 
         if (op == '-') {
-            val = (uint64_t)-val, *vm_ip++ = OP_NEG;
+            val = (uint64_t)-val;
         } else if (op == '~') {
-            val = ~val,           *vm_ip++ = OP_NOT;
+            val = ~val;
         } else {
             assertf(0, "uknown operator %s", lkindstr(op, 0));
         }
@@ -737,19 +588,13 @@ more:
         p += strlen(p);
         *p++ = ')';
 
-        if (op == '*') {
-            val *= rval, *vm_ip++ = OP_MUL;
-        } else if (op == '/') {
-            val /= rval, *vm_ip++ = OP_DIV;
-        } else if (op == '%') {
-            val %= rval, *vm_ip++ = OP_MOD;
-        } else if (op == '&') {
-            val &= rval, *vm_ip++ = OP_AND;
-        } else if (op == TOKEN_SHR) {
-            val >>= rval, *vm_ip++ = OP_SHR;
-        } else if (op == TOKEN_SHL) {
-            val <<= rval, *vm_ip++ = OP_SHL;
-        } else {
+             if (op == '*') val *= rval;
+        else if (op == '/') val /= rval;
+        else if (op == '%') val %= rval;
+        else if (op == '&') val &= rval;
+        else if (op == TOKEN_SHR) val >>= rval;
+        else if (op == TOKEN_SHL) val <<= rval;
+        else {
             assertf(0, "uknown operator %s", lkindstr(op, 0));
         }
 
@@ -788,15 +633,11 @@ more:
         p += strlen(p);
         *p++ = ')';
 
-        if (op == '+') {
-            val += rval, *vm_ip++ = OP_ADD;
-        } else if (op == '-') {
-            val -= rval, *vm_ip++ = OP_SUB;
-        } else if (op == '^') {
-            val ^= rval, *vm_ip++ = OP_XOR;
-        } else if (op == '|') {
-            val |= rval, *vm_ip++ = OP_OR;
-        } else {
+             if (op == '+') val += rval;
+        else if (op == '-') val -= rval;
+        else if (op == '^') val ^= rval;
+        else if (op == '|') val |= rval;
+        else {
             assertf(0, "uknown operator %s", lkindstr(op, 0));
         }
 
@@ -817,22 +658,12 @@ void test_pexpr(char* expr, uint64_t expected)
     logf("input: %s", expr);
     memset(buf, 0, sizeof(buf));
     linit(expr);
-    vm_reset();
     val = pexpr0(buf);
-    *vm_ip++ = OP_HLT;
     assertf(!ltok.kind, "%s", "trailing data?");
     log(buf);
 
     log("");
     log("[interpreter]");
-    logf("= %lu", val);
-    logf("= 0x%016lX", val);
-    assertf(val == expected, "wrong result, expected %lu", expected);
-
-    log("");
-    log("[vm]");
-    vm_reset();
-    val = vm_exec();
     logf("= %lu", val);
     logf("= 0x%016lX", val);
     assertf(val == expected, "wrong result, expected %lu", expected);
