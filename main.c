@@ -308,7 +308,7 @@ void linteger()
     ltok.kind = TOKEN_INT;
     ltok.data.u64 = 0;
 
-    while (isdigit(*ldata))
+    do
     {
         int digit = *ldata++ - '0';
 
@@ -316,6 +316,7 @@ void linteger()
         ltok.data.u64 *= 10;
         ltok.data.u64 += digit;
     }
+    while (isdigit(*ldata));
 }
 
 void lnext()
