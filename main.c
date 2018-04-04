@@ -205,6 +205,7 @@ enum
     TOKEN_SHL,
     TOKEN_SHR,
     TOKEN_INT,
+    TOKEN_FLOAT,
     TOKEN_NAME,
 };
 
@@ -217,6 +218,7 @@ struct token
     union
     {
         uint64_t u64;
+        double f64;
         char* name;
         /* ... */
     }
@@ -259,6 +261,7 @@ char* lkindstr(int kind, char* buf)
     case 0: strcpy(buf, "EOF"); break;
 
     c(INT);
+    c(FLOAT);
     c(NAME);
     c(SHL);
     c(SHR);
@@ -293,6 +296,10 @@ char* ldescribe(token_t* tok, char* buf)
     {
     case TOKEN_INT:
         sprintf(p, ": %lu", ltok.data.u64);
+        break;
+
+    case TOKEN_FLOAT:
+        sprintf(p, ": %.17g", ltok.data.f64);
         break;
 
     case TOKEN_NAME:
@@ -349,6 +356,32 @@ uint64_t linteger()
     return val;
 }
 
+double lfloat()
+{
+    char* start = ldata;
+
+    for (; isdigit(*ldata); ++ldata);
+
+    assertf(*ldata == '.', "expected '.' in float lit., got %c", *ldata);
+    ++ldata;
+
+    for (; isdigit(*ldata); ++ldata);
+
+    if (tolower(*ldata) == 'e')
+    {
+        ++ldata;
+
+        if (*ldata == '-' || *ldata == '+') {
+            ++ldata;
+        }
+
+        assertf(isdigit(*ldata), "%s", "float literal missing exponent");
+        for (; isdigit(*ldata); ++ldata);
+    }
+
+    return strtod(start, 0);
+}
+
 void lnext()
 {
     for (; isspace(*ldata); ++ldata);
@@ -357,8 +390,21 @@ void lnext()
 
     if (isdigit(*ldata))
     {
-        ltok.kind = TOKEN_INT;
-        ltok.data.u64 = linteger();
+        for (; isdigit(*ldata); ++ldata);
+
+        if (*ldata == '.')
+        {
+            ldata = ltok.start;
+            ltok.kind = TOKEN_FLOAT;
+            ltok.data.f64 = lfloat();
+        }
+
+        else
+        {
+            ldata = ltok.start;
+            ltok.kind = TOKEN_INT;
+            ltok.data.u64 = linteger();
+        }
     }
 
     else if (istr_r(ldata, ldata + 2) == string_shl)
@@ -825,6 +871,7 @@ void test_p()
     test_pexpr("0b11111111111111111111111111111111", 0xFFFFFFFF);
     test_pexpr("0b11111111111111111111111111111111"
         "11111111111111111111111111111111", 0xFFFFFFFFFFFFFFFF);
+    t(3.14);
 #undef t
 }
 
