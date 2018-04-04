@@ -482,7 +482,68 @@ void test_lex()
 
 /* --------------------------------------------------------------------- */
 
-#define PMAXLINE 4096
+#define PMAXLISP 4096
+
+struct operand
+{
+    int kind;
+
+    union
+    {
+        uint64_t u64;
+        double f64;
+    }
+    data;
+};
+
+typedef struct operand operand_t;
+
+enum
+{
+    OPERAND_INT,
+    OPERAND_FLOAT,
+};
+
+char* pkindstr(int kind)
+{
+    switch (kind)
+    {
+    case OPERAND_INT: return "uint64";
+    case OPERAND_FLOAT: return "double";
+    }
+
+    return "unknown";
+}
+
+char* pdescribe(operand_t* op, char* dst)
+{
+    char* p;
+
+    if (!dst)
+    {
+        dst = malloc(4096);
+        if (!dst) {
+            perror("malloc");
+            return 0;
+        }
+    }
+
+    p = dst;
+    p += sprintf(dst, "(%s)", pkindstr(op->kind));
+
+    switch (op->kind)
+    {
+    case OPERAND_INT:
+        sprintf(p, "%lu", op->data.u64);
+        break;
+
+    case OPERAND_FLOAT:
+        sprintf(p, "%.17g", op->data.f64);
+        break;
+    }
+
+    return dst;
+}
 
 void pexpect(int token)
 {
@@ -492,37 +553,40 @@ void pexpect(int token)
     lnext();
 }
 
-uint64_t pexpr0(char* dst);
+void pexpr0(operand_t* dst, char* lisp);
 
-uint64_t pexpr3(char *dst)
+void pexpr3(operand_t* dst, char *lisp)
 {
-    uint64_t val;
-
     switch (ltok.kind)
     {
     case '(':
         lnext();
-        val = pexpr0(dst);
+        pexpr0(dst, lisp);
         pexpect(')');
         break;
 
     case TOKEN_INT:
-        sprintf(dst, "%ld", ltok.data.u64);
-        val = ltok.data.u64;
+        sprintf(lisp, "%ld", ltok.data.u64);
+        dst->kind = OPERAND_INT;
+        dst->data.u64 = ltok.data.u64;
+        lnext();
+        break;
+
+    case TOKEN_FLOAT:
+        sprintf(lisp, "%.17g", ltok.data.f64);
+        dst->kind = OPERAND_FLOAT;
+        dst->data.f64 = ltok.data.f64;
         lnext();
         break;
 
     default:
         assertf(0, "unexpected token %s", ldescribe(&ltok, 0));
     }
-
-    return val;
 }
 
-uint64_t pexpr2(char *dst)
+void pexpr2(operand_t* dst, char *lisp)
 {
-    char* p = dst;
-    uint64_t val;
+    char* p = lisp;
     char op = ltok.kind;
 
     switch (op)
@@ -533,37 +597,58 @@ uint64_t pexpr2(char *dst)
         *p++ = ltok.kind;
         *p++ = ' ';
         lnext();
-        val = pexpr3(p);
+        pexpr3(dst, p);
         p += strlen(p);
         *p++ = ')';
 
-        if (op == '-') {
-            val = (uint64_t)-val;
-        } else if (op == '~') {
-            val = ~val;
-        } else {
-            assertf(0, "uknown operator %s", lkindstr(op, 0));
+        if (dst->kind == OPERAND_FLOAT)
+        {
+            if (op == '-') {
+                dst->data.f64 = -dst->data.f64;
+            } else {
+                assertf(0, "unsupported operator '%s' for %s",
+                    lkindstr(op, 0), pdescribe(dst, 0));
+            }
+        }
+
+        else if (dst->kind == OPERAND_INT)
+        {
+            if (op == '-') {
+                dst->data.u64 = (uint64_t)-dst->data.u64;
+            } else if (op == '~') {
+                dst->data.u64 = ~dst->data.u64;
+            } else {
+                assertf(0, "unsupported operator '%s' for %s",
+                    lkindstr(op, 0), pdescribe(dst, 0));
+            }
+        }
+
+        else {
+            assertf(0, "unsupported operand '%s' for operator %s",
+                pdescribe(dst, 0), lkindstr(op, 0));
         }
 
         break;
 
     default:
-        val = pexpr3(p);
+        pexpr3(dst, p);
     }
-
-    return val;
 }
 
-uint64_t pexpr1(char* dst)
+void pexpr1(operand_t* dst, char* lisp)
 {
     int op;
-    uint64_t val;
+    char* opstart;
+    char* opend;
 
-    val = pexpr2(dst);
-    op = ltok.kind;
+    pexpr2(dst, lisp);
 
 more:
-    switch (ltok.kind)
+    op = ltok.kind;
+    opstart = ltok.start;
+    opend = ltok.end;
+
+    switch (op)
     {
     case TOKEN_SHR:
     case TOKEN_SHL:
@@ -572,138 +657,219 @@ more:
     case '%':
     case '&':
     {
-        uint64_t rval;
+        operand_t rval;
 
-        char dstbak[PMAXLINE];
-        char* p = dst;
+        char dstbak[PMAXLISP];
+        char* p = lisp;
 
-        strcpy(dstbak, dst);
+        strcpy(dstbak, lisp);
 
         p += sprintf(p, "(%.*s %s ",
             (int)(ltok.end - ltok.start), ltok.start, dstbak);
 
         lnext();
 
-        rval = pexpr1(p);
+        pexpr1(&rval, p);
         p += strlen(p);
         *p++ = ')';
 
-             if (op == '*') val *= rval;
-        else if (op == '/') val /= rval;
-        else if (op == '%') val %= rval;
-        else if (op == '&') val &= rval;
-        else if (op == TOKEN_SHR) val >>= rval;
-        else if (op == TOKEN_SHL) val <<= rval;
-        else {
-            assertf(0, "uknown operator %s", lkindstr(op, 0));
+        assertf(dst->kind == rval.kind, "%s %.*s %s: type mismatch",
+            pdescribe(dst, 0), (int)(opend - opstart), opstart,
+            pdescribe(&rval, 0));
+
+        if (dst->kind == OPERAND_INT)
+        {
+                 if (op == '*') dst->data.u64 *= rval.data.u64;
+            else if (op == '/') dst->data.u64 /= rval.data.u64;
+            else if (op == '%') dst->data.u64 %= rval.data.u64;
+            else if (op == '&') dst->data.u64 &= rval.data.u64;
+            else if (op == TOKEN_SHR) dst->data.u64 >>= rval.data.u64;
+            else if (op == TOKEN_SHL) dst->data.u64 <<= rval.data.u64;
+            else {
+                assertf(0, "uknown operator %s %.*s %s",
+                    pdescribe(dst, 0), (int)(opend - opstart), opstart,
+                    pdescribe(&rval, 0));
+            }
+        }
+
+        else if (dst->kind == OPERAND_FLOAT)
+        {
+                 if (op == '*') dst->data.f64 *= rval.data.f64;
+            else if (op == '/') dst->data.f64 /= rval.data.f64;
+            else {
+                assertf(0, "uknown operator %s %.*s %s",
+                    pdescribe(dst, 0), (int)(opend - opstart), opstart,
+                    pdescribe(&rval, 0));
+            }
         }
 
         goto more;
     }
 
     }
-
-    return val;
 }
 
-uint64_t pexpr0(char* dst)
+void pexpr0(operand_t* dst, char* lisp)
 {
-    uint64_t val;
+    char* opstart;
+    char* opend;
+    char op;
 
-    val = pexpr1(dst);
+    pexpr1(dst, lisp);
 
 more:
-    switch (ltok.kind)
+    op = ltok.kind;
+    opstart = ltok.start;
+    opend = ltok.end;
+
+    switch (op)
     {
     case '+':
     case '-':
     case '^':
     case '|':
     {
-        char op = (char)ltok.kind;
-        char dstbak[PMAXLINE];
-        char* p = dst;
-        uint64_t rval;
+        char lispbak[PMAXLISP];
+        char* p = lisp;
+        operand_t rval;
 
-        strcpy(dstbak, dst);
+        strcpy(lispbak, lisp);
         lnext();
 
-        p += sprintf(p, "(%c %s ", op, dstbak);
-        rval = pexpr1(p);
+        p += sprintf(p, "(%c %s ", op, lispbak);
+        pexpr1(&rval, p);
         p += strlen(p);
         *p++ = ')';
 
-             if (op == '+') val += rval;
-        else if (op == '-') val -= rval;
-        else if (op == '^') val ^= rval;
-        else if (op == '|') val |= rval;
-        else {
-            assertf(0, "uknown operator %s", lkindstr(op, 0));
+        assertf(dst->kind == rval.kind, "%s %.*s %s: type mismatch",
+            pdescribe(dst, 0), (int)(opend - opstart), opstart,
+            pdescribe(&rval, 0));
+
+        if (dst->kind == OPERAND_INT)
+        {
+                 if (op == '+') dst->data.u64 += rval.data.u64;
+            else if (op == '-') dst->data.u64 -= rval.data.u64;
+            else if (op == '^') dst->data.u64 ^= rval.data.u64;
+            else if (op == '|') dst->data.u64 |= rval.data.u64;
+            else {
+                assertf(0, "uknown operator %s %.*s %s",
+                    pdescribe(dst, 0), (int)(opend - opstart), opstart,
+                    pdescribe(&rval, 0));
+            }
+        }
+
+        else if (dst->kind == OPERAND_FLOAT)
+        {
+                 if (op == '+') dst->data.f64 += rval.data.f64;
+            else if (op == '-') dst->data.f64 -= rval.data.f64;
+            else {
+                assertf(0, "uknown operator %s %.*s %s",
+                    pdescribe(dst, 0), (int)(opend - opstart), opstart,
+                    pdescribe(&rval, 0));
+            }
         }
 
         goto more;
     }
 
     }
-
-    return val;
 }
 
-void test_pexpr(char* expr, uint64_t expected)
+void test_pexpr(char* expr, void* pexpected, int expected_kind)
 {
-    uint64_t val;
-    char buf[PMAXLINE];
+    operand_t res;
+    char buf[PMAXLISP];
 
     err("");
     logf("input: %s", expr);
     memset(buf, 0, sizeof(buf));
     linit(expr);
-    val = pexpr0(buf);
+    pexpr0(&res, buf);
     assertf(!ltok.kind, "%s", "trailing data?");
     log(buf);
 
+    assertf(res.kind == expected_kind, "wrong result type %s, expected %s",
+        pdescribe(&res, 0), pkindstr(expected_kind));
+
     log("");
-    log("[interpreter]");
-    logf("= %lu", val);
-    logf("= 0x%016lX", val);
-    assertf(val == expected, "wrong result, expected %lu", expected);
+
+    switch (res.kind)
+    {
+    case OPERAND_INT:
+    {
+        uint64_t val = res.data.u64;
+        uint64_t expected = *(uint64_t*)pexpected;
+
+        logf("= %lu", val);
+        logf("= 0x%016lX", val);
+        assertf(val == expected,
+            "wrong result, expected %lu", (uint64_t)expected);
+        break;
+    }
+
+    case OPERAND_FLOAT:
+    {
+        double val = res.data.f64;
+        double expected = *(double*)pexpected;
+
+        logf("= %.17g", val);
+        assertf(val == expected,
+            "wrong result, expected %.17g", (double)expected);
+        break;
+    }
+    }
 
     log("(passed)");
 }
 
+void test_pexpr_i(char* expr, uint64_t expected)
+{
+    test_pexpr(expr, &expected, OPERAND_INT);
+}
+
+void test_pexpr_f(char* expr, double expected)
+{
+    test_pexpr(expr, &expected, OPERAND_FLOAT);
+}
+
 void test_p()
 {
-#define t(e) test_pexpr(#e, e)
-    t(1);
-    t((1));
-    t(1*2+3);
-    t(1*2*3);
-    t(1+2*3);
-    t(12*34 + 45/56 + ~25);
-    t((1 + 2 + 3) * 5 + 10 / (1 + 1));
-    t(1<<0);
-    t(1<<1);
-    t(1<<1|1<<4|1<<30);
-    t(-5+7);
-    t(1+-3);
-    t(1-2-3);
-    test_pexpr("18446744073709551615", ~0);
-    t(0xFFFF);
-    t(0xFFFFFFFF);
-    t(0x7FFFFFFF);
-    t(0xFFFFFFFFFFFFFFFF);
-    t(0755);
-    t(0666);
-    t(0777);
-    test_pexpr("0b11", 3);
-    test_pexpr("0b11111111", 0xFF);
-    test_pexpr("0b1111111111111111", 0xFFFF);
-    test_pexpr("0b1000000000000000", 0x8000);
-    test_pexpr("0b11111111111111111111111111111111", 0xFFFFFFFF);
-    test_pexpr("0b11111111111111111111111111111111"
+#define i(e) test_pexpr_i(#e, e)
+#define f(e) test_pexpr_f(#e, e)
+#define b(s, i) test_pexpr_i(s, i)
+    i(1);
+    i((1));
+    i(1*2+3);
+    i(1*2*3);
+    i(1+2*3);
+    i(12*34 + 45/56 + ~25);
+    i((1 + 2 + 3) * 5 + 10 / (1 + 1));
+    i(1<<0);
+    i(1<<1);
+    i(1<<1|1<<4|1<<30);
+    i(-5+7);
+    i(1+-3);
+    i(1-2-3);
+    test_pexpr_i("18446744073709551615", ~0);
+    i(0xFFFF);
+    i(0xFFFFFFFF);
+    i(0x7FFFFFFF);
+    i(0xFFFFFFFFFFFFFFFF);
+    i(0755);
+    i(0666);
+    i(0777);
+    b("0b11", 3);
+    b("0b11111111", 0xFF);
+    b("0b1111111111111111", 0xFFFF);
+    b("0b1000000000000000", 0x8000);
+    b("0b11111111111111111111111111111111", 0xFFFFFFFF);
+    b("0b11111111111111111111111111111111"
         "11111111111111111111111111111111", 0xFFFFFFFFFFFFFFFF);
-    t(3.14);
-#undef t
+    f(3.14);
+    f(1337.1337+420.420+69.69);
+#undef i
+#undef f
+#undef b
 }
 
 /* --------------------------------------------------------------------- */
