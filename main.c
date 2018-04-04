@@ -63,6 +63,7 @@ typedef struct bufhdr bufhdr_t;
 #define blen(x) ((x) ? bhdr(x)->len : 0)
 #define bcap(x) ((x) ? bhdr(x)->cap : 0)
 #define bfits(x, n) (blen(x) + (n) <= bcap(x))
+#define bend(x) ((x) + blen(x))
 #define bfree(x) (x) ? (free(bhdr(x)), x = 0) : 0
 
 #define bfit(x, n) \
@@ -153,18 +154,16 @@ void init_interns()
 
 char* istr_r(char* start, char* end)
 {
-    int i;
+    intern_t* i;
     int len;
     intern_t new;
 
     len = end - start;
 
-    for (i = 0; i < blen(interns); ++i)
+    for (i = interns; i < bend(interns); ++i)
     {
-        if (len == interns[i].len &&
-            !strncmp(start, interns[i].str, len))
-        {
-            return interns[i].str;
+        if (len == i->len && !strncmp(start, i->str, len)) {
+            return i->str;
         }
     }
 
