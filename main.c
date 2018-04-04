@@ -812,9 +812,9 @@ void test_p()
     t(0xFFFFFFFF);
     t(0x7FFFFFFF);
     t(0xFFFFFFFFFFFFFFFF);
-    t(00755);
-    t(00666);
-    t(00777);
+    t(0755);
+    t(0666);
+    t(0777);
 #undef t
 }
 
