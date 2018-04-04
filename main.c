@@ -362,8 +362,9 @@ double lfloat()
 
     for (; isdigit(*ldata); ++ldata);
 
-    assertf(*ldata == '.', "expected '.' in float lit., got %c", *ldata);
-    ++ldata;
+    if (*ldata == '.') {
+        ++ldata;
+    }
 
     for (; isdigit(*ldata); ++ldata);
 
@@ -392,7 +393,7 @@ void lnext()
     {
         for (; isdigit(*ldata); ++ldata);
 
-        if (*ldata == '.')
+        if (*ldata == '.' || tolower(*ldata) == 'e')
         {
             ldata = ltok.start;
             ltok.kind = TOKEN_FLOAT;
@@ -871,7 +872,9 @@ void test_p()
     f((1.0+3.0*3.0)/2.0);
     f(420.);
     f(.420);
+    f(1e10);
     f(1.e10);
+    f(.1e10);
     f(1.5E10);
     f(1.5E+10);
     f(1.5E-3);
