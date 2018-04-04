@@ -316,8 +316,11 @@ void lnext()
 
         while (isdigit(*ldata))
         {
+            int digit = *ldata++ - '0';
+
+            assert(ltok.data.u64 <= (SIZE_MAX - digit) / 10);
             ltok.data.u64 *= 10;
-            ltok.data.u64 += *ldata++ - '0';
+            ltok.data.u64 += digit;
         }
     }
 
