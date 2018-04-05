@@ -999,6 +999,10 @@ void test_p()
 #define i(e) test_pexpr_i(#e, e)
 #define f(e) test_pexpr_f(#e, e)
 #define b(s, i) test_pexpr_i(s, i)
+    i(0);
+    i(00);
+    i(0x0);
+    b("0b0", 0);
     i(1);
     i((1));
     i(1*2+3);
