@@ -710,9 +710,8 @@ char* pdescribe(operand_t* op, char* dst)
 
 void pexpect(int token)
 {
-    assertf(ltok.kind == token, "unexpected token. got %s, expected %s",
-        ldescribe(&ltok, 0), lkindstr(token, 0));
-
+    syntax_assertf(ltok.kind == token, "unexpected token. got %s, "
+        "expected %s", ldescribe(&ltok, 0), lkindstr(token, 0));
     lnext();
 }
 
@@ -743,7 +742,7 @@ void pexpr3(operand_t* dst, char *lisp)
         break;
 
     default:
-        assertf(0, "unexpected token %s", ldescribe(&ltok, 0));
+        syntax_assertf(0, "unexpected token %s", ldescribe(&ltok, 0));
     }
 }
 
@@ -769,7 +768,7 @@ void pexpr2(operand_t* dst, char *lisp)
             if (op == '-') {
                 dst->data.f64 = -dst->data.f64;
             } else {
-                assertf(0, "unsupported operator '%s' for %s",
+                syntax_assertf(0, "unsupported operator '%s' for %s",
                     lkindstr(op, 0), pdescribe(dst, 0));
             }
         }
@@ -781,13 +780,13 @@ void pexpr2(operand_t* dst, char *lisp)
             } else if (op == '~') {
                 dst->data.u64 = ~dst->data.u64;
             } else {
-                assertf(0, "unsupported operator '%s' for %s",
+                syntax_assertf(0, "unsupported operator '%s' for %s",
                     lkindstr(op, 0), pdescribe(dst, 0));
             }
         }
 
         else {
-            assertf(0, "unsupported operand '%s' for operator %s",
+            syntax_assertf(0, "unsupported operand '%s' for operator %s",
                 pdescribe(dst, 0), lkindstr(op, 0));
         }
 
@@ -836,9 +835,9 @@ more:
         p += strlen(p);
         *p++ = ')';
 
-        assertf(dst->kind == rval.kind, "%s %.*s %s: type mismatch",
-            pdescribe(dst, 0), (int)(opend - opstart), opstart,
-            pdescribe(&rval, 0));
+        syntax_assertf(dst->kind == rval.kind, "%s %.*s %s: type "
+            "mismatch", pdescribe(dst, 0), (int)(opend - opstart),
+            opstart, pdescribe(&rval, 0));
 
         if (dst->kind == OPERAND_INT)
         {
@@ -849,7 +848,7 @@ more:
             else if (op == TOKEN_SHR) dst->data.u64 >>= rval.data.u64;
             else if (op == TOKEN_SHL) dst->data.u64 <<= rval.data.u64;
             else {
-                assertf(0, "uknown operator %s %.*s %s",
+                syntax_assertf(0, "uknown operator %s %.*s %s",
                     pdescribe(dst, 0), (int)(opend - opstart), opstart,
                     pdescribe(&rval, 0));
             }
@@ -860,7 +859,7 @@ more:
                  if (op == '*') dst->data.f64 *= rval.data.f64;
             else if (op == '/') dst->data.f64 /= rval.data.f64;
             else {
-                assertf(0, "uknown operator %s %.*s %s",
+                syntax_assertf(0, "uknown operator %s %.*s %s",
                     pdescribe(dst, 0), (int)(opend - opstart), opstart,
                     pdescribe(&rval, 0));
             }
@@ -904,9 +903,9 @@ more:
         p += strlen(p);
         *p++ = ')';
 
-        assertf(dst->kind == rval.kind, "%s %.*s %s: type mismatch",
-            pdescribe(dst, 0), (int)(opend - opstart), opstart,
-            pdescribe(&rval, 0));
+        syntax_assertf(dst->kind == rval.kind, "%s %.*s %s: type "
+            "mismatch", pdescribe(dst, 0), (int)(opend - opstart),
+            opstart, pdescribe(&rval, 0));
 
         if (dst->kind == OPERAND_INT)
         {
@@ -915,7 +914,7 @@ more:
             else if (op == '^') dst->data.u64 ^= rval.data.u64;
             else if (op == '|') dst->data.u64 |= rval.data.u64;
             else {
-                assertf(0, "uknown operator %s %.*s %s",
+                syntax_assertf(0, "uknown operator %s %.*s %s",
                     pdescribe(dst, 0), (int)(opend - opstart), opstart,
                     pdescribe(&rval, 0));
             }
@@ -926,7 +925,7 @@ more:
                  if (op == '+') dst->data.f64 += rval.data.f64;
             else if (op == '-') dst->data.f64 -= rval.data.f64;
             else {
-                assertf(0, "uknown operator %s %.*s %s",
+                syntax_assertf(0, "uknown operator %s %.*s %s",
                     pdescribe(dst, 0), (int)(opend - opstart), opstart,
                     pdescribe(&rval, 0));
             }
