@@ -199,6 +199,12 @@ void test_istr()
 
 /* --------------------------------------------------------------------- */
 
+#define syntax_errorf(fmt, ...) fprintf(stderr, fmt "\n", __VA_ARGS__)
+#define syntax_error(fmt) fprintf(stderr, fmt "\n")
+#define syntax_assert(cond, msg) for (; !(cond); syntax_error(msg))
+#define syntax_assertf(cond, ...) \
+    for (; !(cond); syntax_errorf(__VA_ARGS__))
+
 enum
 {
     TOKEN_LAST_LITERAL = 128,
@@ -358,9 +364,8 @@ void linteger()
         }
     }
 
-    if (base != 10) {
-        assertf(isxdigit(*ldata), "%s", "integer prefix with no value");
-    }
+    syntax_assert(base == 10 || isxdigit(*ldata),
+        "integer prefix with no value");
 
     while (isxdigit(*ldata))
     {
@@ -372,8 +377,20 @@ void linteger()
             digit = 10 + tolower(*ldata++) - 'a';
         }
 
-        assert(digit < base);
-        assert(val <= (UINT64_MAX - digit) / base);
+        if (digit >= base)
+        {
+            syntax_errorf("integer literal digit is out of range for "
+                "base %d", base);
+            for (; isxdigit(*ldata); ++ldata);
+            break;
+        }
+
+        if (val > (UINT64_MAX - digit) / base)
+        {
+            syntax_error("integer literal overflows uint64");
+            for (; isxdigit(*ldata); ++ldata);
+            break;
+        }
 
         val *= base;
         val += digit;
@@ -404,7 +421,8 @@ void lfloat()
             ++ldata;
         }
 
-        assertf(isdigit(*ldata), "%s", "float literal missing exponent");
+        syntax_assert(isdigit(*ldata), "float literal missing exponent");
+
         for (; isdigit(*ldata); ++ldata);
     }
 
@@ -412,9 +430,11 @@ void lfloat()
     ltok.data.f64 = strtod(start, 0);
 }
 
-#define lexpect(c) \
-    assertf(*ldata == c, "expected '%c', got '%c'", c, *ldata); \
-    ++ldata
+void lexpect(char c)
+{
+    syntax_assertf(*ldata == c, "expected '%c', got '%c'", c, *ldata);
+    ++ldata;
+}
 
 char escape_to_char[255];
 
@@ -435,15 +455,17 @@ char lchar()
 {
     char val;
 
-    assertf(*ldata != '\n', "%s",
-        "string or char literal cannot contain newline");
+    syntax_assert(*ldata != '\n', "string or char literal cannot "
+        "contain newline");
 
     if (*ldata == '\\')
     {
         ++ldata;
         val = escape_to_char[(int)*ldata];
-        assertf(val || *ldata == '0', "invalid escape sequence %c",
+
+        syntax_assertf(val || *ldata == '0', "invalid escape sequence %c",
             *ldata);
+
         ++ldata;
     }
 
@@ -459,7 +481,7 @@ void lchar_literal()
     char val;
 
     lexpect('\'');
-    assertf(*ldata != '\'', "%s", "empty char literal");
+    syntax_assert(*ldata != '\'', "empty char literal");
     val = lchar();
     lexpect('\'');
 
