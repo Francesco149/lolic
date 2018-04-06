@@ -141,16 +141,8 @@ struct intern
 typedef struct intern intern_t;
 
 intern_t* interns = 0;
-char* string_shl;
-char* string_shr;
 
 char* istr(char* str);
-
-void init_interns()
-{
-    string_shl = istr("<<");
-    string_shr = istr(">>");
-}
 
 char* istr_r(char* start, char* end)
 {
@@ -208,12 +200,28 @@ void test_istr()
 enum
 {
     TOKEN_LAST_LITERAL = 128,
-    TOKEN_SHL,
-    TOKEN_SHR,
     TOKEN_INT,
     TOKEN_FLOAT,
     TOKEN_NAME,
     TOKEN_STRING,
+    TOKEN_INC,
+    TOKEN_DEC,
+    TOKEN_ADDEQ,
+    TOKEN_SUBEQ,
+    TOKEN_MULEQ,
+    TOKEN_DIVEQ,
+    TOKEN_MODEQ,
+    TOKEN_XOREQ,
+    TOKEN_OREQ,
+    TOKEN_OR,
+    TOKEN_ANDEQ,
+    TOKEN_AND,
+    TOKEN_SHL,
+    TOKEN_SHLEQ,
+    TOKEN_BE,
+    TOKEN_SHR,
+    TOKEN_SHREQ,
+    TOKEN_GE,
 };
 
 enum
@@ -280,8 +288,24 @@ char* lkindstr(int kind, char* buf)
     c(FLOAT);
     c(NAME);
     c(STRING);
+    c(INC);
+    c(DEC);
+    c(ADDEQ);
+    c(SUBEQ);
+    c(MULEQ);
+    c(DIVEQ);
+    c(MODEQ);
+    c(XOREQ);
+    c(OREQ);
+    c(OR);
+    c(ANDEQ);
+    c(AND);
     c(SHL);
+    c(SHLEQ);
+    c(BE);
     c(SHR);
+    c(SHREQ);
+    c(GE);
 
     default:
         sprintf(buf, "unknown token %d", kind);
@@ -571,22 +595,74 @@ void lnext()
         ltok.data.name = istr_r(ltok.start, ldata);
         break;
 
+#define op1(c, c1, t1) \
+    case c: \
+        ltok.kind = *ldata++; \
+        \
+        if (*ldata == c1) \
+        { \
+            ltok.kind = t1; \
+            ++ldata; \
+        } \
+        break;
+
+#define op2(c, c1, t1, c2, t2) \
+    case c: \
+        ltok.kind = *ldata++; \
+        \
+        if (*ldata == c1) \
+        { \
+            ltok.kind = t1; \
+            ++ldata; \
+        } \
+        \
+        else if (*ldata == c2) \
+        { \
+            ltok.kind = t2; \
+            ++ldata; \
+        } \
+        break;
+
+#define shlr(c, c1, t1, t1eq, c2, t2) \
+    case c: \
+        ltok.kind = *ldata++; \
+        \
+        if (*ldata == c1) \
+        { \
+            ltok.kind = t1; \
+            ++ldata; \
+            \
+            if (*ldata == '=') \
+            { \
+                ltok.kind = t1eq; \
+                ++ldata; \
+            } \
+        } \
+        \
+        else if (*ldata == c2) \
+        { \
+            ltok.kind = t2; \
+            ++ldata; \
+        } \
+        break;
+
+    op2('+', '=', TOKEN_ADDEQ, '+', TOKEN_INC)
+    op2('-', '=', TOKEN_SUBEQ, '-', TOKEN_DEC)
+    op1('*', '=', TOKEN_MULEQ)
+    op1('/', '=', TOKEN_DIVEQ)
+    op1('%', '=', TOKEN_MODEQ)
+    op1('^', '=', TOKEN_XOREQ)
+    op2('|', '=', TOKEN_OREQ, '|', TOKEN_OR)
+    op2('&', '=', TOKEN_ANDEQ, '&', TOKEN_AND)
+    shlr('<', '<', TOKEN_SHL, TOKEN_SHLEQ, '=', TOKEN_BE)
+    shlr('>', '>', TOKEN_SHR, TOKEN_SHREQ, '=', TOKEN_GE)
+
+#undef shlr
+#undef op2
+#undef op1
+
     default:
-        if (istr_r(ldata, ldata + 2) == string_shl)
-        {
-            ltok.kind = TOKEN_SHL;
-            ldata += 2;
-        }
-
-        else if (istr_r(ldata, ldata + 2) == string_shr)
-        {
-            ltok.kind = TOKEN_SHR;
-            ldata += 2;
-        }
-
-        else {
-            ltok.kind = *ldata++;
-        }
+        ltok.kind = *ldata++;
     }
 
     ltok.end = ldata;
@@ -610,35 +686,74 @@ void lnext()
         ldescribe(&ltok, 0), (uint64_t)i); \
     lnext()
 
-#define lassert_lit(c) \
+#define lassert_tok(c) \
     assertf(ltok.kind == c, \
         "unexpected token. got %s, expected %s", \
         ldescribe(&ltok, 0), lkindstr(c, 0)); \
     lnext()
 
-void test_lex()
+void test_linit(char* src)
 {
-    char* src = "XY+(XY)_HELLO1,234+FOO!994memes,\"hello world\\n\"";
-
     logf("input: %s", src);
     linit(src);
+}
 
+void test_lex()
+{
+    test_linit("XY+(XY)_HELLO1,234+FOO!994memes,\"hello world\\n\"");
     lassert_name("XY");
-    lassert_lit('+');
-    lassert_lit('(');
+    lassert_tok('+');
+    lassert_tok('(');
     lassert_name("XY");
-    lassert_lit(')');
+    lassert_tok(')');
     lassert_name("_HELLO1");
-    lassert_lit(',');
+    lassert_tok(',');
     lassert_int(234);
-    lassert_lit('+');
+    lassert_tok('+');
     lassert_name("FOO");
-    lassert_lit('!');
+    lassert_tok('!');
     lassert_int(994);
     lassert_name("memes");
-    lassert_lit(',');
+    lassert_tok(',');
     lassert_str("hello world\n");
-    lassert_lit(0);
+    lassert_tok(0);
+
+    test_linit("+ ++ -- * *= / /= % %= & &= && | |= || ^ ^=");
+    lassert_tok('+');
+    lassert_tok(TOKEN_INC);
+    lassert_tok(TOKEN_DEC);
+    lassert_tok('*');
+    lassert_tok(TOKEN_MULEQ);
+    lassert_tok('/');
+    lassert_tok(TOKEN_DIVEQ);
+
+    if (ltok.kind != '%')
+    {
+        assertf(0, "unexpected token. got %s, expected %s",
+            ldescribe(&ltok, 0), lkindstr('%', 0));
+    }
+
+    lnext();
+
+    lassert_tok(TOKEN_MODEQ);
+    lassert_tok('&');
+    lassert_tok(TOKEN_ANDEQ);
+    lassert_tok(TOKEN_AND);
+    lassert_tok('|');
+    lassert_tok(TOKEN_OREQ);
+    lassert_tok(TOKEN_OR);
+    lassert_tok('^');
+    lassert_tok(TOKEN_XOREQ);
+    lassert_tok(0);
+
+    test_linit("< << <= > >> >=");
+    lassert_tok('<');
+    lassert_tok(TOKEN_SHL);
+    lassert_tok(TOKEN_BE);
+    lassert_tok('>');
+    lassert_tok(TOKEN_SHR);
+    lassert_tok(TOKEN_GE);
+    lassert_tok(0);
 
     log("(passed)");
 }
@@ -1056,7 +1171,6 @@ void test_p()
 
 void init()
 {
-    init_interns();
     lstatic_init();
 }
 
