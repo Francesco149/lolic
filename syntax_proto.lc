@@ -1,12 +1,12 @@
 
 void: make_packet(uint8*: p)
 {
-    push((uint32*)p, 10); // same as *(uint32*)p = 10; p += sizeof(uint32);
-    push((uint32*)p, 255);
-    push((uint16*)p, 0xFFFF);
-    push((uint16*)p, 0);
-    push(p, 'a');
-    push(p, 'z');
+    push32(p, 10); // same as *(uint32*)p = 10; p += sizeof(uint32);
+    push32(p, 255);
+    push16(p, 0xFFFF);
+    push16(p, 0);
+    push8(p, 'a');
+    push8(p, 'z');
 }
 
 "hello world!\n";
