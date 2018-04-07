@@ -66,7 +66,7 @@ void: describe_char(int8: c)
 // like in HolyC, you can have implicit cases that are 1 + the previous
 // case
 
-for (int64 i = 0; i < 10; ++i)
+for (int64: i = 0; i < 10; ++i)
 {
     pick (i)
     {
@@ -80,8 +80,8 @@ for (int64 i = 0; i < 10; ++i)
 
 // ------------------------------------------------------------------------
 
-double x = 5.5;
-double y = 10.123123;
+double: x = 5.5;
+double: y = 10.123123;
 
 "pixel position: %d %d\n", int(x), int(y);
 
