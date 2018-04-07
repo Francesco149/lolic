@@ -63,9 +63,43 @@ void: describe_char(int8: c)
 
 // ------------------------------------------------------------------------
 
+// like in HolyC, you can have implicit cases that are 1 + the previous
+// case
+
+for (int64 i = 0; i < 10; ++i)
+{
+    pick (i)
+    {
+    case: "one";
+    case: "two";
+    case: "three";
+    case 10: "ten";
+    case: "eleven";
+    }
+}
+
+// ------------------------------------------------------------------------
+
 double x = 5.5;
 double y = 10.123123;
 
 "pixel position: %d %d\n", int(x), int(y);
 
 // there's also float() to convert to float
+
+// ------------------------------------------------------------------------
+
+// there is no preprocessor or const, if you need to define constants use
+// enum
+
+enum
+{
+    TEN = 10,
+    ELEVEN,
+    TWELVE,
+    THIRTEEN,
+};
+
+enum PI = 3.14159265358979323846;
+
+// note that enum is always anonymous, unlike C and C++
