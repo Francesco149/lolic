@@ -103,3 +103,64 @@ enum
 enum PI = 3.14159265358979323846;
 
 // note that enum is always anonymous, unlike C and C++
+
+// ------------------------------------------------------------------------
+
+// structs behave mostly like C except that you don't need the struct
+// prefix
+
+struct point
+{
+    double: x, y;
+};
+
+point: pt;
+pt.x = 10;
+pt.y = 20;
+
+pt = { 10, 20 };
+pt = { .x = 10, .y = 20 };
+pt = { .y = 20, .x = 10 };
+
+// automatically picks next field if unspecified
+pt = { .x = 10, 20 };
+
+// omitted fields are initialized to zero
+
+// there is no -> operator, members of struct pointers are also accessed
+// with '.'
+
+point*: ppt = &pt;
+ppt.x = 50;
+ppt.y = 70;
+
+// the dump builtin generates printf calls for all struct members
+// recursively
+
+dump(pt);
+
+// point: pt = {
+//     /* double */ .x = 50.0000,
+//     /* double */ .y = 70.0000,
+// };
+//
+
+// it can also take multiple values
+
+int: a = 50;
+double: b = 123.45;
+dump(pt, ppt, a, b, 10, 20);
+
+// point: pt = {
+//     /* double */ .x = 50.0000,
+//     /* double */ .y = 70.0000,
+// };
+// point*: ppt = 0xBADDCAFEBAADF00D;
+// *ppt = {
+//     /* double */ .x = 50.0000,
+//     /* double */ .y = 70.0000,
+// };
+// int: a = 50;
+// int: b = 123.45;
+// int(10);
+// int(20);
