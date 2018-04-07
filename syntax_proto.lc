@@ -85,7 +85,7 @@ double: y = 10.123123;
 
 "pixel position: %d %d\n", int(x), int(y);
 
-// there's also float() to convert to float
+// there's also double() to convert to double
 
 // ------------------------------------------------------------------------
 
