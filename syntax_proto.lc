@@ -25,7 +25,7 @@ make_packet(packet);
 uint64: varg_test(...)
 {
     for (uint64: i = 0; i < argc; ++i) {
-        "%d: %s ", i, (int8*)argv[i];
+        "%d: %s ", i, argv[i];
     }
 
     '\n';
@@ -61,3 +61,11 @@ void: describe_char(int8: c)
     "\n";
 }
 
+// ------------------------------------------------------------------------
+
+double x = 5.5;
+double y = 10.123123;
+
+"pixel position: %d %d\n", int(x), int(y);
+
+// there's also float() to convert to float
