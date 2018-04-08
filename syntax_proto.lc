@@ -179,3 +179,23 @@ dump(p[0], p[1], p[2], p[3]);
 // /* uint8 */ p[1] = 3;
 // /* uint8 */ p[2] = 2;
 // /* uint8 */ p[3] = 1;
+
+// ------------------------------------------------------------------------
+
+// function pointers are stored in void*, there are no function types.
+// parameter count and types are not checked, it's up to you to not
+// do anything wrong
+
+void: mycallback(int64: a, int64: b)
+{
+    "%d", (a * b) / 2;
+}
+
+void*: p = mycallback;
+
+void: callit(void*: callback)
+{
+    callback(10, 20);
+}
+
+callit(mycallback);
