@@ -16,6 +16,7 @@
 #include <ctype.h>
 #include <string.h>
 #include <stdint.h>
+#include <math.h>
 
 #ifdef LOLIC_DEBUG
 #define logf(fmt, ...) \
@@ -760,9 +761,282 @@ void test_lex()
 
 /* --------------------------------------------------------------------- */
 
-#define PMAXLISP 4096
+#define ast_alloc malloc
+#define ast_dup(x, n) ast_dup_n(x, n, sizeof(*x))
 
-struct operand
+void* ast_dup_n(void* p, int n, int elem_size)
+{
+    void* res;
+
+    res = malloc(n * elem_size);
+    if (!res) {
+        perror("malloc");
+        return 0;
+    }
+
+    memcpy(res, p, n * elem_size);
+    return res;
+}
+
+/* TODO */
+
+/* --------------------------------------------------------------------- */
+
+struct typespec;
+typedef struct typespec typespec_t;
+
+enum
+{
+    TYPE_NONE,
+    TYPE_NAME,
+    TYPE_ARRAY,
+    TYPE_PTR,
+};
+
+struct typespec
+{
+    int kind;
+
+    union
+    {
+        char* name;
+
+        struct
+        {
+            typespec_t* element_type;
+            int len;
+        }
+        array;
+
+        typespec_t* pointed;
+    }
+    u;
+};
+
+typespec_t* typespec(int kind)
+{
+    typespec_t* res;
+
+    res = (typespec_t*)ast_alloc(sizeof(typespec_t));
+    res->kind = kind;
+
+    return res;
+}
+
+typespec_t* typespec_name(char* name)
+{
+    typespec_t* res;
+
+    res = typespec(TYPE_NAME);
+    res->u.name = name;
+
+    return res;
+}
+
+typespec_t* typespec_array(typespec_t* element_type, int len)
+{
+    typespec_t* res;
+
+    res = typespec(TYPE_ARRAY);
+    res->u.array.element_type = element_type;
+    res->u.array.len = len;
+
+    return res;
+}
+
+typespec_t* typespec_ptr(typespec_t* pointed)
+{
+    typespec_t* res;
+
+    res = typespec(TYPE_PTR);
+    res->u.pointed = pointed;
+
+    return res;
+}
+
+/* --------------------------------------------------------------------- */
+
+struct expr;
+struct stmt;
+
+typedef struct expr expr_t;
+typedef struct stmt stmt_t;
+
+struct stmt_block
+{
+    stmt_t** stmts;
+    int nstmts;
+};
+
+typedef struct stmt_block stmt_block_t;
+
+enum
+{
+    DECL_NONE,
+    DECL_VAR,
+    DECL_STRUCT,
+    DECL_UNION,
+    DECL_ENUM,
+    DECL_FUNC,
+};
+
+struct enum_item
+{
+    char* name;
+    expr_t* value;
+};
+
+struct aggregate_field
+{
+    char* name;
+    typespec_t* type;
+};
+
+struct func_param
+{
+    char* name;
+    typespec_t* type;
+    expr_t* default_val;
+};
+
+typedef struct enum_item enum_item_t;
+typedef struct aggregate_field aggregate_field_t;
+typedef struct func_param func_param_t;
+
+struct decl
+{
+    int kind;
+    char* name;
+
+    union
+    {
+        struct
+        {
+            expr_t* expr;
+            typespec_t* type;
+        }
+        var;
+
+        struct
+        {
+            aggregate_field_t* fields;
+            int nfields;
+        }
+        aggregate;
+
+        struct
+        {
+            enum_item_t* items;
+            int nitems;
+        }
+        enum_;
+
+        struct
+        {
+            typespec_t* ret_type;
+            func_param_t* params;
+            int nparams;
+            stmt_block_t body;
+        }
+        func;
+    }
+    u;
+};
+
+typedef struct decl decl_t;
+
+decl_t* decl(int kind, char* name)
+{
+    decl_t* res;
+
+    res = (decl_t*)ast_alloc(sizeof(decl_t));
+    res->kind = kind;
+    res->name = name;
+
+    return res;
+}
+
+decl_t* decl_var(char* name, expr_t* expr, typespec_t* type)
+{
+    decl_t* res;
+
+    res = decl(DECL_VAR, name);
+    res->u.var.expr = expr;
+    res->u.var.type = type;
+
+    return res;
+}
+
+decl_t* decl_aggregate(int kind, char* name, aggregate_field_t* fields,
+    int nfields)
+{
+    decl_t* res;
+
+    assert(kind == DECL_STRUCT || kind == DECL_UNION);
+    res = decl(kind, name);
+    res->u.aggregate.fields = ast_dup(fields, nfields);
+    res->u.aggregate.nfields = nfields;
+
+    return res;
+}
+
+decl_t* decl_enum(enum_item_t* items, int nitems)
+{
+    decl_t* res;
+
+    res = decl(DECL_ENUM, 0);
+    res->u.enum_.items = ast_dup(items, nitems);
+    res->u.enum_.nitems = nitems;
+
+    return res;
+}
+
+decl_t* decl_func(char* name, typespec_t* ret_type, func_param_t* params,
+    int nparams, stmt_block_t body)
+{
+    decl_t* res;
+
+    res = decl(DECL_FUNC, name);
+    res->u.func.ret_type = ret_type;
+    res->u.func.params = ast_dup(params, nparams);
+    res->u.func.nparams = nparams;
+    res->u.func.body = body;
+
+    return res;
+}
+
+/* --------------------------------------------------------------------- */
+
+enum
+{
+    EXPR_NONE,
+    EXPR_INT,
+    EXPR_FLOAT,
+    EXPR_STR,
+    EXPR_NAME,
+    EXPR_BINARY,
+    EXPR_UNARY,
+    EXPR_CALL,
+    EXPR_AGGREGATE,
+    EXPR_TOINT,
+    EXPR_TOFLOAT,
+    EXPR_SIZEOF,
+    EXPR_OFFSETOF,
+    EXPR_PUSH8,
+    EXPR_PUSH16,
+    EXPR_PUSH32,
+    EXPR_PUSH64,
+};
+
+struct aggregate_init_item
+{
+    char* name;
+    expr_t* value;
+};
+
+typedef struct aggregate_init_item aggregate_init_item_t;
+
+struct expr
 {
     int kind;
 
@@ -770,401 +1044,947 @@ struct operand
     {
         uint64_t u64;
         double f64;
+        char* str;
+
+        struct
+        {
+            int operator;
+            expr_t* left;
+            expr_t* right;
+        }
+        binary;
+
+        struct
+        {
+            int operator;
+            expr_t* operand;
+        }
+        unary;
+
+        struct
+        {
+            expr_t* function;
+            expr_t** params;
+            int nparams;
+        }
+        call;
+
+        struct
+        {
+            aggregate_init_item_t* items;
+            int nitems;
+        }
+        aggregate;
+
+        expr_t* expr;
+        typespec_t* sizeof_type;
+
+        struct
+        {
+            typespec_t* type;
+            char* field;
+        }
+        offsetof_;
+
+        struct
+        {
+            expr_t* dst;
+            expr_t* src;
+        }
+        push;
     }
-    data;
+    u;
 };
 
-typedef struct operand operand_t;
+expr_t* expr(int kind)
+{
+    expr_t* res;
+
+    res = (expr_t*)ast_alloc(sizeof(expr_t));
+    res->kind = kind;
+
+    return res;
+}
+
+expr_t* expr_int(uint64_t u64)
+{
+    expr_t* res;
+
+    res = expr(EXPR_INT);
+    res->u.u64 = u64;
+
+    return res;
+}
+
+expr_t* expr_float(double f64)
+{
+    expr_t* res;
+
+    res = expr(EXPR_FLOAT);
+    res->u.f64 = f64;
+
+    return res;
+}
+
+expr_t* expr_str(char* str)
+{
+    expr_t* res;
+
+    res = expr(EXPR_STR);
+    res->u.str = str;
+
+    return res;
+}
+
+expr_t* expr_name(char* name)
+{
+    expr_t* res;
+
+    res = expr(EXPR_NAME);
+    res->u.str = name;
+
+    return res;
+}
+
+expr_t* expr_binary(int operator, expr_t* left, expr_t* right)
+{
+    expr_t* res;
+
+    res = expr(EXPR_BINARY);
+    res->u.binary.operator = operator;
+    res->u.binary.left = left;
+    res->u.binary.right = right;
+
+    return res;
+}
+
+expr_t* expr_unary(int operator, expr_t* operand)
+{
+    expr_t* res;
+
+    res = expr(EXPR_UNARY);
+    res->u.unary.operator = operator;
+    res->u.unary.operand = operand;
+
+    return res;
+}
+
+expr_t* expr_call(expr_t* function, expr_t** params, int nparams)
+{
+    expr_t* res;
+
+    res = expr(EXPR_CALL);
+    res->u.call.function = function;
+    res->u.call.params = ast_dup(params, nparams);
+    res->u.call.nparams = nparams;
+
+    return res;
+}
+
+expr_t* expr_aggregate(aggregate_init_item_t* items, int nitems)
+{
+    expr_t* res;
+
+    res = expr(EXPR_AGGREGATE);
+    res->u.aggregate.items = ast_dup(items, nitems);
+    res->u.aggregate.nitems = nitems;
+
+    return res;
+}
+
+expr_t* expr_toint(expr_t* exp)
+{
+    expr_t* res;
+
+    res = expr(EXPR_TOINT);
+    res->u.expr = exp;
+
+    return res;
+}
+
+expr_t* expr_tofloat(expr_t* exp)
+{
+    expr_t* res;
+
+    res = expr(EXPR_TOFLOAT);
+    res->u.expr = exp;
+
+    return res;
+}
+
+expr_t* expr_sizeof(typespec_t* type)
+{
+    expr_t* res;
+
+    res = expr(EXPR_SIZEOF);
+    res->u.sizeof_type = type;
+
+    return res;
+}
+
+expr_t* expr_offsetof(typespec_t* type, char* field)
+{
+    expr_t* res;
+
+    res = expr(EXPR_OFFSETOF);
+    res->u.offsetof_.type = type;
+    res->u.offsetof_.field = field;
+
+    return res;
+}
+
+expr_t* expr_push(int bits, expr_t* src, expr_t* dst)
+{
+    expr_t* res;
+    int kind;
+
+    switch (bits)
+    {
+    case 8:  kind = EXPR_PUSH8;  break;
+    case 16: kind = EXPR_PUSH16; break;
+    case 32: kind = EXPR_PUSH32; break;
+    case 64: kind = EXPR_PUSH64; break;
+
+    default:
+        assertf(0, "cannot push %d bits", bits);
+        break;
+    }
+
+    res = expr(kind);
+    res->u.push.dst = dst;
+    res->u.push.src = src;
+
+    return res;
+}
+
+/* --------------------------------------------------------------------- */
 
 enum
 {
-    OPERAND_INT,
-    OPERAND_FLOAT,
+    STMT_NONE,
+    STMT_DECL,
+    STMT_BREAK,
+    STMT_CONTINUE,
+    STMT_FALLTHROUGH,
+    STMT_EXPR,
+    STMT_RETURN,
+    STMT_BLOCK,
+    STMT_IF,
+    STMT_WHILE,
+    STMT_FOR,
+    STMT_DO,
+    STMT_SWITCH,
+    STMT_PICK,
 };
 
-char* pkindstr(int kind)
+struct elseif
 {
-    switch (kind)
-    {
-    case OPERAND_INT: return "uint64";
-    case OPERAND_FLOAT: return "double";
-    }
+    expr_t* cond;
+    stmt_block_t body;
+};
 
-    return "unknown";
-}
-
-char* pdescribe(operand_t* op, char* dst)
+struct switch_case
 {
-    char* p;
+    expr_t* exprs;
+    int nexprs;
+    stmt_block_t body;
+};
 
-    if (!dst)
+typedef struct switch_case switch_case_t;
+typedef struct elseif elseif_t;
+
+struct stmt
+{
+    int kind;
+
+    union
     {
-        dst = malloc(4096);
-        if (!dst) {
-            perror("malloc");
-            return 0;
+        decl_t* decl;
+        expr_t* expr;
+        stmt_block_t block;
+
+        struct
+        {
+            expr_t* cond;
+            stmt_block_t then;
+            elseif_t* elseifs;
+            int nelseifs;
+            stmt_block_t else_;
         }
+        if_;
+
+        struct
+        {
+            stmt_t* init;
+            expr_t* cond;
+            stmt_t* iter;
+            stmt_block_t body;
+        }
+        loop;
+
+        struct
+        {
+            expr_t* expr;
+            switch_case_t* cases;
+            int ncases;
+        }
+        switch_;
     }
+    u;
+};
 
-    p = dst;
-    p += sprintf(dst, "(%s)", pkindstr(op->kind));
-
-    switch (op->kind)
-    {
-    case OPERAND_INT:
-        sprintf(p, "%lu", op->data.u64);
-        break;
-
-    case OPERAND_FLOAT:
-        sprintf(p, "%.17f", op->data.f64);
-        break;
-    }
-
-    return dst;
+stmt_block_t stmt_block(stmt_t** stmts, int nstmts)
+{
+    return (stmt_block_t){ast_dup(stmts, nstmts), nstmts};
 }
 
-void pexpect(int token)
+stmt_t* stmt(int kind)
 {
-    syntax_assertf(ltok.kind == token, "unexpected token. got %s, "
-        "expected %s", ldescribe(&ltok, 0), lkindstr(token, 0));
-    lnext();
+    stmt_t* res;
+
+    res = (stmt_t*)ast_alloc(sizeof(stmt_t));
+    res->kind = kind;
+
+    return res;
 }
 
-void pexpr0(operand_t* dst, char* lisp);
-
-void pexpr3(operand_t* dst, char *lisp)
+stmt_t* stmt_decl(decl_t* decl)
 {
-    switch (ltok.kind)
+    stmt_t* res;
+
+    res = stmt(STMT_DECL);
+    res->u.decl = decl;
+
+    return res;
+}
+
+stmt_t* stmt_expr(expr_t* expr)
+{
+    stmt_t* res;
+
+    res = stmt(STMT_EXPR);
+    res->u.expr = expr;
+
+    return res;
+}
+
+stmt_t* stmt_return(expr_t* expr)
+{
+    stmt_t* res;
+
+    res = stmt(STMT_RETURN);
+    res->u.expr = expr;
+
+    return res;
+}
+
+stmt_t* stmt_if(expr_t* cond, stmt_block_t then, elseif_t* elseifs,
+    int nelseifs, stmt_block_t else_)
+{
+    stmt_t* res;
+
+    res = stmt(STMT_IF);
+    res->u.if_.cond = cond;
+    res->u.if_.then = then;
+    res->u.if_.elseifs = ast_dup(elseifs, nelseifs);
+    res->u.if_.nelseifs = nelseifs;
+    res->u.if_.else_ = else_;
+
+    return res;
+}
+
+stmt_t* stmt_loop(int kind, expr_t* cond, stmt_block_t body)
+{
+    stmt_t* res;
+
+    assert(kind == STMT_WHILE || kind == STMT_DO);
+    res = stmt(kind);
+    res->u.loop.cond = cond;
+    res->u.loop.body = body;
+
+    return res;
+}
+
+stmt_t* stmt_for(stmt_t* init, expr_t* cond, stmt_t* iter,
+    stmt_block_t body)
+{
+    stmt_t* res;
+
+    res = stmt(STMT_FOR);
+    res->u.loop.init = init;
+    res->u.loop.cond = cond;
+    res->u.loop.iter = iter;
+    res->u.loop.body = body;
+
+    return res;
+}
+
+stmt_t* stmt_switch(int kind, expr_t* expr, switch_case_t* cases,
+    int ncases)
+{
+    stmt_t* res;
+
+    assert(kind == STMT_SWITCH || kind == STMT_PICK);
+    res = stmt(kind);
+    res->u.switch_.expr = expr;
+    res->u.switch_.cases = ast_dup(cases, ncases);
+    res->u.switch_.ncases = ncases;
+
+    return res;
+}
+
+/* --------------------------------------------------------------------- */
+
+void print_indent(int indent)
+{
+    for (; indent; --indent) {
+        printf("    ");
+    }
+}
+
+void print_typespec(typespec_t* type)
+{
+    switch (type->kind)
     {
-    case '(':
-        lnext();
-        pexpr0(dst, lisp);
-        pexpect(')');
+    case TYPE_NAME:
+        printf(type->u.name);
         break;
 
-    case TOKEN_INT:
-        sprintf(lisp, "%ld", ltok.data.u64);
-        dst->kind = OPERAND_INT;
-        dst->data.u64 = ltok.data.u64;
-        lnext();
+    case TYPE_ARRAY:
+        printf("(array ");
+        print_typespec(type->u.array.element_type);
+        printf(" %d)", type->u.array.len);
         break;
 
-    case TOKEN_FLOAT:
-        sprintf(lisp, "%f", ltok.data.f64);
-        dst->kind = OPERAND_FLOAT;
-        dst->data.f64 = ltok.data.f64;
-        lnext();
+    case TYPE_PTR:
+        printf("(ptr ");
+        print_typespec(type->u.pointed);
+        printf(")");
+        break;
+    }
+}
+
+void print_expr(expr_t* expr, int indent);
+void print_stmt_block(stmt_block_t block, int indent);
+
+void print_decl(decl_t* decl, int indent)
+{
+    int i;
+
+    print_indent(indent);
+
+    switch (decl->kind)
+    {
+    case DECL_VAR:
+        printf("(");
+        print_typespec(decl->u.var.type);
+        printf(" %s ", decl->name);
+
+        if (decl->u.var.expr) {
+            print_expr(decl->u.var.expr, indent);
+        } else {
+            printf("nil");
+        }
+
+        printf(")");
+        break;
+
+    case DECL_STRUCT:
+    case DECL_UNION:
+        if (decl->kind == DECL_STRUCT) {
+            printf("(struct %s", decl->name);
+        } else {
+            printf("(union %s", decl->name);
+        }
+
+        for (i = 0; i < decl->u.aggregate.nfields; ++i)
+        {
+            aggregate_field_t* it = &decl->u.aggregate.fields[i];
+
+            printf("\n");
+            print_indent(indent + 1);
+            printf("(");
+            print_typespec(it->type);
+            printf(" %s)", it->name);
+        }
+
+        printf(")");
+        break;
+
+    case DECL_ENUM:
+        printf("(enum ");
+
+        for (i = 0; i < decl->u.enum_.nitems; ++i)
+        {
+            enum_item_t* it = &decl->u.enum_.items[i];
+
+            printf("\n");
+            print_indent(indent + 1);
+            printf("(%s ", it->name);
+            print_expr(it->value, indent);
+            printf(")");
+        }
+
+        printf(")");
+        break;
+
+    case DECL_FUNC:
+        printf("(func (");
+        print_typespec(decl->u.func.ret_type);
+        printf(" %s) (", decl->name);
+
+        for (i = 0; i < decl->u.func.nparams; ++i)
+        {
+            func_param_t* it = &decl->u.func.params[i];
+
+            if (i) {
+                printf(" ");
+            }
+
+            printf("(");
+            print_typespec(it->type);
+            printf(" %s ", it->name);
+
+            if (it->default_val) {
+                print_expr(it->default_val, indent);
+            } else {
+                printf("nil");
+            }
+
+            printf(")");
+        }
+
+        printf(")\n");
+
+        print_stmt_block(decl->u.func.body, indent + 1);
+        printf(")");
         break;
 
     default:
-        syntax_assertf(0, "unexpected token %s", ldescribe(&ltok, 0));
+        assertf(0, "unknown decl kind %d", decl->kind);
     }
 }
 
-void pexpr2(operand_t* dst, char *lisp)
+void print_operator(int op)
 {
-    char* p = lisp;
-    char op = ltok.kind;
+    char* s;
+
+    if (op < TOKEN_LAST_LITERAL)
+    {
+        printf("%c", op);
+        return;
+    }
 
     switch (op)
     {
-    case '-':
-    case '~':
-        *p++ = '(';
-        *p++ = ltok.kind;
-        *p++ = ' ';
-        lnext();
-        pexpr3(dst, p);
-        p += strlen(p);
-        *p++ = ')';
+    case TOKEN_INC:   s = "++";  break;
+    case TOKEN_DEC:   s = "--";  break;
+    case TOKEN_ADDEQ: s = "+=";  break;
+    case TOKEN_SUBEQ: s = "-=";  break;
+    case TOKEN_MULEQ: s = "*=";  break;
+    case TOKEN_DIVEQ: s = "/=";  break;
+    case TOKEN_MODEQ: s = "%=";  break;
+    case TOKEN_XOREQ: s = "^=";  break;
+    case TOKEN_OREQ:  s = "|=";  break;
+    case TOKEN_OR:    s = "||";  break;
+    case TOKEN_ANDEQ: s = "&=";  break;
+    case TOKEN_AND:   s = "&&";  break;
+    case TOKEN_SHL:   s = "<<";  break;
+    case TOKEN_SHLEQ: s = "<<="; break;
+    case TOKEN_BE:    s = "<=";  break;
+    case TOKEN_SHR:   s = ">>";  break;
+    case TOKEN_SHREQ: s = ">>="; break;
+    case TOKEN_GE:    s = ">=";  break;
+    }
 
-        if (dst->kind == OPERAND_FLOAT)
+    printf(s);
+}
+
+void print_expr(expr_t* expr, int indent)
+{
+    int i;
+
+    switch (expr->kind)
+    {
+    case EXPR_INT:
+        printf("%lu", expr->u.u64);
+        break;
+
+    case EXPR_FLOAT:
+        printf("%f", expr->u.f64);
+        break;
+
+    case EXPR_STR:
+        printf("\"%s\"", expr->u.str);
+        break;
+
+    case EXPR_NAME:
+        printf("%s", expr->u.str);
+        break;
+
+    case EXPR_BINARY:
+        printf("(");
+        print_operator(expr->u.binary.operator);
+        printf(" ");
+        print_expr(expr->u.binary.left, indent);
+        printf(" ");
+        print_expr(expr->u.binary.right, indent);
+        printf(")");
+        break;
+
+    case EXPR_UNARY:
+        printf("(");
+        print_operator(expr->u.unary.operator);
+        printf(" ");
+        print_expr(expr->u.unary.operand, indent);
+        printf(")");
+        break;
+
+    case EXPR_CALL:
+        printf("(");
+        print_expr(expr->u.call.function, indent);
+
+        for (i = 0; i < expr->u.call.nparams; ++i)
         {
-            if (op == '-') {
-                dst->data.f64 = -dst->data.f64;
-            } else {
-                syntax_assertf(0, "unsupported operator '%s' for %s",
-                    lkindstr(op, 0), pdescribe(dst, 0));
-            }
+            printf(" ");
+            print_expr(expr->u.call.params[i], indent);
         }
 
-        else if (dst->kind == OPERAND_INT)
+        printf(")");
+        break;
+
+    case EXPR_AGGREGATE:
+        printf("(aggregate\n");
+
+        for (i = 0; i < expr->u.aggregate.nitems; ++i)
         {
-            if (op == '-') {
-                dst->data.u64 = (uint64_t)-dst->data.u64;
-            } else if (op == '~') {
-                dst->data.u64 = ~dst->data.u64;
-            } else {
-                syntax_assertf(0, "unsupported operator '%s' for %s",
-                    lkindstr(op, 0), pdescribe(dst, 0));
-            }
-        }
+            aggregate_init_item_t* it = &expr->u.aggregate.items[i];
 
-        else {
-            syntax_assertf(0, "unsupported operand '%s' for operator %s",
-                pdescribe(dst, 0), lkindstr(op, 0));
+            printf("\n");
+            print_indent(indent + 1);
+            printf("(%s ", it->name ? it->name : "nil");
+            print_expr(it->value, indent);
+            printf(")");
         }
+        break;
 
+    case EXPR_TOINT:
+        printf("(int ");
+        print_expr(expr->u.expr, indent);
+        printf(")");
+        break;
+
+    case EXPR_TOFLOAT:
+        printf("(float ");
+        print_expr(expr->u.expr, indent);
+        printf(")");
+        break;
+
+    case EXPR_SIZEOF:
+        printf("(sizeof ");
+        print_typespec(expr->u.sizeof_type);
+        printf(")");
+        break;
+
+    case EXPR_OFFSETOF:
+        printf("(offsetof ");
+        print_typespec(expr->u.offsetof_.type);
+        printf(" %s)", expr->u.offsetof_.field);
+        break;
+
+    case EXPR_PUSH8:
+    case EXPR_PUSH16:
+    case EXPR_PUSH32:
+    case EXPR_PUSH64:
+        printf("(push%d ", 2 << (expr->kind - EXPR_PUSH8 + 3));
+        print_expr(expr->u.push.dst, indent);
+        printf(" ");
+        print_expr(expr->u.push.src, indent);
+        printf(")");
         break;
 
     default:
-        pexpr3(dst, p);
+        assertf(0, "unknown expr kind %d", expr->kind);
     }
 }
 
-void pexpr1(operand_t* dst, char* lisp)
+void print_stmt(stmt_t* stmt, int indent)
 {
-    int op;
-    char* opstart;
-    char* opend;
+    int i, j;
 
-    pexpr2(dst, lisp);
+    print_indent(indent);
 
-more:
-    op = ltok.kind;
-    opstart = ltok.start;
-    opend = ltok.end;
-
-    switch (op)
+    switch (stmt->kind)
     {
-    case TOKEN_SHR:
-    case TOKEN_SHL:
-    case '*':
-    case '/':
-    case '%':
-    case '&':
-    {
-        operand_t rval;
-
-        char dstbak[PMAXLISP];
-        char* p = lisp;
-
-        strcpy(dstbak, lisp);
-
-        p += sprintf(p, "(%.*s %s ",
-            (int)(ltok.end - ltok.start), ltok.start, dstbak);
-
-        lnext();
-
-        pexpr1(&rval, p);
-        p += strlen(p);
-        *p++ = ')';
-
-        syntax_assertf(dst->kind == rval.kind, "%s %.*s %s: type "
-            "mismatch", pdescribe(dst, 0), (int)(opend - opstart),
-            opstart, pdescribe(&rval, 0));
-
-        if (dst->kind == OPERAND_INT)
-        {
-                 if (op == '*') dst->data.u64 *= rval.data.u64;
-            else if (op == '/') dst->data.u64 /= rval.data.u64;
-            else if (op == '%') dst->data.u64 %= rval.data.u64;
-            else if (op == '&') dst->data.u64 &= rval.data.u64;
-            else if (op == TOKEN_SHR) dst->data.u64 >>= rval.data.u64;
-            else if (op == TOKEN_SHL) dst->data.u64 <<= rval.data.u64;
-            else {
-                syntax_assertf(0, "uknown operator %s %.*s %s",
-                    pdescribe(dst, 0), (int)(opend - opstart), opstart,
-                    pdescribe(&rval, 0));
-            }
-        }
-
-        else if (dst->kind == OPERAND_FLOAT)
-        {
-                 if (op == '*') dst->data.f64 *= rval.data.f64;
-            else if (op == '/') dst->data.f64 /= rval.data.f64;
-            else {
-                syntax_assertf(0, "uknown operator %s %.*s %s",
-                    pdescribe(dst, 0), (int)(opend - opstart), opstart,
-                    pdescribe(&rval, 0));
-            }
-        }
-
-        goto more;
-    }
-
-    }
-}
-
-void pexpr0(operand_t* dst, char* lisp)
-{
-    char* opstart;
-    char* opend;
-    char op;
-
-    pexpr1(dst, lisp);
-
-more:
-    op = ltok.kind;
-    opstart = ltok.start;
-    opend = ltok.end;
-
-    switch (op)
-    {
-    case '+':
-    case '-':
-    case '^':
-    case '|':
-    {
-        char lispbak[PMAXLISP];
-        char* p = lisp;
-        operand_t rval;
-
-        strcpy(lispbak, lisp);
-        lnext();
-
-        p += sprintf(p, "(%c %s ", op, lispbak);
-        pexpr1(&rval, p);
-        p += strlen(p);
-        *p++ = ')';
-
-        syntax_assertf(dst->kind == rval.kind, "%s %.*s %s: type "
-            "mismatch", pdescribe(dst, 0), (int)(opend - opstart),
-            opstart, pdescribe(&rval, 0));
-
-        if (dst->kind == OPERAND_INT)
-        {
-                 if (op == '+') dst->data.u64 += rval.data.u64;
-            else if (op == '-') dst->data.u64 -= rval.data.u64;
-            else if (op == '^') dst->data.u64 ^= rval.data.u64;
-            else if (op == '|') dst->data.u64 |= rval.data.u64;
-            else {
-                syntax_assertf(0, "uknown operator %s %.*s %s",
-                    pdescribe(dst, 0), (int)(opend - opstart), opstart,
-                    pdescribe(&rval, 0));
-            }
-        }
-
-        else if (dst->kind == OPERAND_FLOAT)
-        {
-                 if (op == '+') dst->data.f64 += rval.data.f64;
-            else if (op == '-') dst->data.f64 -= rval.data.f64;
-            else {
-                syntax_assertf(0, "uknown operator %s %.*s %s",
-                    pdescribe(dst, 0), (int)(opend - opstart), opstart,
-                    pdescribe(&rval, 0));
-            }
-        }
-
-        goto more;
-    }
-
-    }
-}
-
-void test_pexpr(char* expr, void* pexpected, int expected_kind)
-{
-    operand_t res;
-    char buf[PMAXLISP];
-
-    err("");
-    logf("input: %s", expr);
-    memset(buf, 0, sizeof(buf));
-    linit(expr);
-    pexpr0(&res, buf);
-    assertf(!ltok.kind, "%s", "trailing data?");
-    log(buf);
-
-    assertf(res.kind == expected_kind, "wrong result type %s, expected %s",
-        pdescribe(&res, 0), pkindstr(expected_kind));
-
-    log("");
-
-    switch (res.kind)
-    {
-    case OPERAND_INT:
-    {
-        uint64_t val = res.data.u64;
-        uint64_t expected = *(uint64_t*)pexpected;
-
-        logf("= %lu", val);
-        logf("= 0x%016lX", val);
-        assertf(val == expected,
-            "wrong result, expected %lu", (uint64_t)expected);
+    case STMT_DECL:
+        print_decl(stmt->u.decl, indent);
         break;
-    }
 
-    case OPERAND_FLOAT:
-    {
-        double val = res.data.f64;
-        double expected = *(double*)pexpected;
-
-        logf("= %f", val);
-        assertf(val == expected,
-            "wrong result, expected %f", (double)expected);
+    case STMT_BREAK:
+        printf("(break)");
         break;
-    }
-    }
 
-    log("(passed)");
+    case STMT_CONTINUE:
+        printf("(continue)");
+        break;
+
+    case STMT_FALLTHROUGH:
+        printf("(fallthrough)");
+        break;
+
+    case STMT_EXPR:
+        print_expr(stmt->u.expr, indent);
+        break;
+
+    case STMT_RETURN:
+        printf("(return ");
+
+        if (stmt->u.expr) {
+            print_expr(stmt->u.expr, indent);
+        } else {
+            printf("nil");
+        }
+
+        printf(")");
+        break;
+
+    case STMT_BLOCK:
+        printf("(do\n");
+        print_stmt_block(stmt->u.block, indent + 1);
+        printf(")");
+        break;
+
+    case STMT_IF:
+        printf("(if ");
+        print_expr(stmt->u.if_.cond, indent);
+        printf("\n");
+        print_indent(indent);
+
+        printf("(then\n");
+        print_stmt_block(stmt->u.if_.then, indent + 1);
+        printf(")");
+
+        for (i = 0; i < stmt->u.if_.nelseifs; ++i)
+        {
+            elseif_t* it = &stmt->u.if_.elseifs[i];
+
+            printf("(elsif ");
+            print_expr(it->cond, indent);
+            printf("\n");
+            print_indent(indent);
+            printf("(then\n");
+            print_stmt_block(it->body, indent + 1);
+            printf("))");
+        }
+
+        if (stmt->u.if_.else_.nstmts)
+        {
+            printf("(else\n");
+            print_stmt_block(stmt->u.if_.else_, indent + 1);
+            printf(")");
+        }
+
+        printf(")");
+        break;
+
+    case STMT_WHILE:
+        printf("(while ");
+        print_expr(stmt->u.loop.cond, indent);
+        printf("\n");
+        printf("(do\n");
+        print_stmt_block(stmt->u.loop.body, indent + 1);
+        printf("))");
+        break;
+
+    case STMT_DO:
+        printf("(loop\n");
+        printf("(do\n");
+        print_stmt_block(stmt->u.loop.body, indent + 1);
+        printf(")\n");
+        printf("(while ");
+        print_expr(stmt->u.loop.cond, indent);
+        printf("))");
+        break;
+
+    case STMT_FOR:
+        printf("(for ");
+        print_stmt(stmt->u.loop.init, indent);
+        printf(" ");
+        print_expr(stmt->u.loop.cond, indent);
+        printf(" ");
+        print_stmt(stmt->u.loop.iter, indent);
+        printf("\n");
+        printf("(do\n");
+        print_stmt_block(stmt->u.loop.body, indent + 1);
+        printf("))");
+        break;
+
+    case STMT_SWITCH:
+    case STMT_PICK:
+        if (stmt->kind == STMT_SWITCH) {
+            printf("(switch ");
+        } else {
+            printf("(pick ");
+        }
+
+        print_expr(stmt->u.switch_.expr, indent);
+        printf("\n");
+
+        for (i = 0; i < stmt->u.switch_.ncases; ++i)
+        {
+            switch_case_t* it = &stmt->u.switch_.cases[i];
+
+            printf("(case (");
+
+            for (j = 0; j < it->nexprs; ++j) {
+                print_expr(&it->exprs[j], indent);
+            }
+
+            printf(")\n");
+            printf("(do\n");
+            print_stmt_block(it->body, indent + 1);
+            printf("))\n");
+        }
+        break;
+
+    default:
+        assertf(0, "unknown stmt kind %d", stmt->kind);
+    }
 }
 
-void test_pexpr_i(char* expr, uint64_t expected)
+void print_stmts(stmt_t** stmts, int nstmts, int indent)
 {
-    test_pexpr(expr, &expected, OPERAND_INT);
+    int i;
+
+    for (i = 0; i < nstmts; ++i)
+    {
+        if (i) {
+            printf("\n");
+            print_indent(indent);
+        }
+
+        print_stmt(stmts[i], indent);
+    }
 }
 
-void test_pexpr_f(char* expr, double expected)
+void print_stmt_block(stmt_block_t block, int indent)
 {
-    test_pexpr(expr, &expected, OPERAND_FLOAT);
+    print_stmts(block.stmts, block.nstmts, indent);
+}
+
+/* --------------------------------------------------------------------- */
+
+int pmatch(int token)
+{
+    if (ltok.kind == token)
+    {
+        lnext();
+        return 1;
+    }
+
+    return 0;
+}
+
+void pexpect(int kind)
+{
+    syntax_assertf(pmatch(kind), "unexpected token. got %s, "
+        "expected %s", ldescribe(&ltok, 0), lkindstr(kind, 0));
 }
 
 void test_p()
 {
-#define i(e) test_pexpr_i(#e, e)
-#define f(e) test_pexpr_f(#e, e)
-#define b(s, i) test_pexpr_i(s, i)
-    i(0);
-    i(00);
-    i(0x0);
-    b("0b0", 0);
-    i(1);
-    i((1));
-    i(1*2+3);
-    i(1*2*3);
-    i(1+2*3);
-    i(12*34 + 45/56 + ~25);
-    i((1 + 2 + 3) * 5 + 10 / (1 + 1));
-    i(1<<0);
-    i(1<<1);
-    i(1<<1|1<<4|1<<30);
-    i(-5+7);
-    i(1+-3);
-    i(1-2-3);
-    test_pexpr_i("18446744073709551615", ~0);
-    i(0xFFFF);
-    i(0xFFFFFFFF);
-    i(0x7FFFFFFF);
-    i(0xFFFFFFFFFFFFFFFF);
-    i(0XDEADBEEFBADDCAFE);
-    i(0755);
-    i(0666);
-    i(0777);
-    b("0b11", 3);
-    b("0B11", 3);
-    b("0b11111111", 0xFF);
-    b("0b1111111111111111", 0xFFFF);
-    b("0b1000000000000000", 0x8000);
-    b("0b11111111111111111111111111111111", 0xFFFFFFFF);
-    b("0b11111111111111111111111111111111"
-        "11111111111111111111111111111111", 0xFFFFFFFFFFFFFFFF);
-    f(3.14);
-    f(1337.1337+420.420+69.69);
-    f(1.0/2.0);
-    f((1.0+3.0*3.0)/2.0);
-    f(420.);
-    f(.420);
-    f(1e10);
-    f(1.e10);
-    f(.1e10);
-    f(1.5E10);
-    f(1.5E+10);
-    f(1.5E-3);
-    i('a');
-    i('\'');
-#undef i
-#undef f
-#undef b
+    stmt_t* stmts[] =
+    {
+        stmt_decl(
+            decl_var("x", expr_int(42), typespec_name("int"))
+        ),
+        stmt_decl(
+            decl_aggregate(
+                DECL_STRUCT,
+                "point",
+                (aggregate_field_t[]){
+                    { "x", typespec_name("double") },
+                    { "y", typespec_name("double") },
+                },
+                2
+            )
+        ),
+        stmt_decl(
+            decl_aggregate(
+                DECL_UNION,
+                "value",
+                (aggregate_field_t[]){
+                    { "u64", typespec_name("uint64") },
+                    { "i8", typespec_array(typespec_name("int8"), 8) },
+                    { "u32", typespec_array(typespec_name("uint32"), 2) },
+                },
+                3
+            )
+        ),
+        stmt_decl(
+            decl_enum(
+                (enum_item_t[]){
+                    { "ELEMENT_NONE", expr_int(0) },
+                    {
+                        "ELEMENT_FIRE",
+                        expr_binary(TOKEN_SHL, expr_int(2), expr_int(0))
+                    },
+                    {
+                        "ELEMENT_EARTH",
+                        expr_binary(TOKEN_SHL, expr_int(2), expr_int(1))
+                    },
+                    {
+                        "ELEMENT_WATER",
+                        expr_binary(TOKEN_SHL, expr_int(2), expr_int(2))
+                    },
+                },
+                4
+            )
+        ),
+        stmt_decl(
+            decl_func(
+                "factorial", typespec_name("int"),
+                (func_param_t[]){{ "n", typespec_name("int"), 0}}, 1,
+                stmt_block(
+                    (stmt_t*[]){
+                        stmt_if(
+                            expr_binary(
+                                TOKEN_BE, expr_name("n"), expr_int(0)
+                            ),
+                            stmt_block(
+                                (stmt_t*[]){
+                                    stmt_return(expr_int(1)),
+                                },
+                                1
+                            ),
+                            0, 0,
+                            (stmt_block_t){0}
+                        ),
+                        stmt_return(
+                            expr_binary(
+                                '*',
+                                expr_name("n"),
+                                expr_call(
+                                    expr_name("factorial"),
+                                    (expr_t*[]){
+                                        expr_binary(
+                                            '-',
+                                            expr_name("n"),
+                                            expr_int(1)
+                                        )
+                                    }, 1
+                                )
+                            )
+                        ),
+                    },
+                    2
+                )
+            )
+        ),
+    };
+
+    print_stmt_block(stmt_block(stmts, lenof(stmts)), 0);
+    printf("\n");
 }
 
 /* --------------------------------------------------------------------- */
