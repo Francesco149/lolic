@@ -493,20 +493,17 @@ void lexpect(char c)
     ++ldata;
 }
 
-char escape_to_char[255];
-
-void lstatic_init()
+char escape_to_char[255] =
 {
-    memset(escape_to_char, 0, sizeof(escape_to_char));
-    escape_to_char['n'] = '\n';
-    escape_to_char['r'] = '\r';
-    escape_to_char['t'] = '\t';
-    escape_to_char['v'] = '\v';
-    escape_to_char['b'] = '\b';
-    escape_to_char['a'] = '\a';
-    escape_to_char['\\'] = '\\';
-    escape_to_char['\''] = '\'';
-}
+    ['n'] = '\n',
+    ['r'] = '\r',
+    ['t'] = '\t',
+    ['v'] = '\v',
+    ['b'] = '\b',
+    ['a'] = '\a',
+    ['\\'] = '\\',
+    ['\''] = '\'',
+};
 
 char lchar()
 {
@@ -2067,11 +2064,6 @@ void test_p()
 
 /* --------------------------------------------------------------------- */
 
-void init()
-{
-    lstatic_init();
-}
-
 #ifdef LOLIC_DEBUG
 void tests()
 {
@@ -2086,7 +2078,6 @@ void tests()
 
 int main()
 {
-    init();
     tests();
 
     return 0;
