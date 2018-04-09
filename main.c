@@ -53,6 +53,45 @@
 
 /* --------------------------------------------------------------------- */
 
+#define xmalloc(n) xmalloc_(n, __FILE__, __LINE__)
+#define xrealloc(p, n) xrealloc_(p, n, __FILE__, __LINE__)
+
+void* xmalloc_(int n, char* file, int line)
+{
+    void* res;
+
+    res = malloc(n);
+    errf("[%s:%d] malloc(%d) -> %p", file, line, n, res);
+
+    if (!res)
+    {
+        errf("[%s:%d] malloc failed", file, line);
+        perror("malloc");
+        exit(1);
+    }
+
+    return res;
+}
+
+void* xrealloc_(void* p, int n, char* file, int line)
+{
+    void* res;
+
+    res = realloc(p, n);
+    errf("[%s:%d] realloc(%p, %d) -> %p", file, line, p, n, res);
+
+    if (!res)
+    {
+        errf("[%s:%d] realloc failed", file, line);
+        perror("realloc");
+        exit(1);
+    }
+
+    return res;
+}
+
+/* --------------------------------------------------------------------- */
+
 struct bufhdr
 {
     int len;
@@ -89,15 +128,10 @@ void* bgrw(void* x, int len, int elem_size)
     cap = max(2 * bcap(x) + 1, len);
     assert(cap >= len);
 
-    hdr = realloc(
+    hdr = xrealloc(
         x ? bhdr(x) : 0,
         offsetof(bufhdr_t, buf) + cap * elem_size
     );
-
-    if (!hdr) {
-        perror("realloc");
-        return 0;
-    }
 
     if (!x) {
         hdr->len = 0;
@@ -269,13 +303,8 @@ void linit(char* data)
 
 char* lkindstr(int kind, char* buf)
 {
-    if (!buf)
-    {
-        buf = (char*)malloc(4096);
-        if (!buf) {
-            perror("malloc");
-            return 0;
-        }
+    if (!buf) {
+        buf = (char*)xmalloc(4096);
     }
 
     if (kind <= TOKEN_LAST_LITERAL)
@@ -325,13 +354,8 @@ char* ldescribe(token_t* tok, char* buf)
 {
     char *p;
 
-    if (!buf)
-    {
-        buf = (char*)malloc(4096);
-        if (!buf) {
-            perror("malloc");
-            return 0;
-        }
+    if (!buf) {
+        buf = (char*)xmalloc(4096);
     }
 
     p = buf;
@@ -782,12 +806,7 @@ void memchunks_grow(memchunks_t* m, int min_size)
     char* new_chunk;
     int size = round_up(min_size, CHUNK_SIZE);
 
-    new_chunk = malloc(size);
-    if (!new_chunk) {
-        perror("malloc");
-        return;
-    }
-
+    new_chunk = xmalloc(size);
     bpush(m->chunks, new_chunk);
     m->p = new_chunk;
     m->end = new_chunk + size;
