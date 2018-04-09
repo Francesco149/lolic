@@ -3,7 +3,7 @@
 gcc \
     -std=c99 -pedantic \
     -O3 \
-    -Wall -Werror \
+    -Wextra -Wall -Werror \
     -DLOLIC_DEBUG \
     main.c \
     -o lolicc

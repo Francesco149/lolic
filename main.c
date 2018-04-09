@@ -1186,7 +1186,7 @@ void tests()
 #define tests()
 #endif
 
-int main(int argc, char* argv[])
+int main()
 {
     init();
     tests();
