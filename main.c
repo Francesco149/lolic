@@ -46,6 +46,10 @@
 #define offsetof(t, f) ((size_t)&((t*)0)->f)
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
+#define round_down(x, po2) ((x) & ~((po2) - 1))
+#define round_up(x, po2) round_down((x) + (po2), po2)
+#define roundptr_up(x, po2) (void*)round_up((uintptr_t)(x), po2)
+#define roundptr_down(x, po2) (void*)round_down((uintptr_t)(x), po2)
 
 /* --------------------------------------------------------------------- */
 
@@ -761,24 +765,75 @@ void test_lex()
 
 /* --------------------------------------------------------------------- */
 
-#define ast_alloc malloc
-#define ast_dup(x, n) ast_dup_n(x, n, sizeof(*x))
+#define CHUNK_SIZE (1024 * 1024)
+#define CHUNK_ALIGN 8
 
-void* ast_dup_n(void* p, int n, int elem_size)
+struct memchunks
+{
+    char** chunks;
+    char* p;
+    char* end;
+};
+
+typedef struct memchunks memchunks_t;
+
+void memchunks_grow(memchunks_t* m, int min_size)
+{
+    char* new_chunk;
+    int size = round_up(min_size, CHUNK_SIZE);
+
+    new_chunk = malloc(size);
+    if (!new_chunk) {
+        perror("malloc");
+        return;
+    }
+
+    bpush(m->chunks, new_chunk);
+    m->p = new_chunk;
+    m->end = new_chunk + size;
+}
+
+void* memchunks_alloc(memchunks_t* m, int n)
 {
     void* res;
 
-    res = malloc(n * elem_size);
-    if (!res) {
-        perror("malloc");
-        return 0;
+    if (m->p + n >= m->end)
+    {
+        memchunks_grow(m, n);
+        assert(m->end - m->p >= n);
     }
 
-    memcpy(res, p, n * elem_size);
+    res = m->p;
+    m->p += n;
+    m->p = roundptr_up(m->p, CHUNK_ALIGN);
+    assert(m->p == roundptr_down(m->p, CHUNK_ALIGN));
+
     return res;
 }
 
-/* TODO */
+/* --------------------------------------------------------------------- */
+
+memchunks_t ast_allocator;
+
+void* ast_alloc(int size)
+{
+    return memchunks_alloc(&ast_allocator, size);
+}
+
+#define ast_dup(x, n) ast_dup_n(x, n * sizeof(*x))
+
+void* ast_dup_n(void* p, int n)
+{
+    void* res;
+
+    if (n <= 0) {
+        return 0;
+    }
+
+    res = ast_alloc(n);
+    memcpy(res, p, n);
+    return res;
+}
 
 /* --------------------------------------------------------------------- */
 
