@@ -388,6 +388,26 @@ char* ldescribe(token_t* tok, char* buf)
     return buf;
 }
 
+uint8_t char_to_digit[255] =
+{
+    ['0'] = 0,
+    ['1'] = 1,
+    ['2'] = 2,
+    ['3'] = 3,
+    ['4'] = 4,
+    ['5'] = 5,
+    ['6'] = 6,
+    ['7'] = 7,
+    ['8'] = 8,
+    ['9'] = 9,
+    ['a'] = 10, ['A'] = 10,
+    ['b'] = 11, ['B'] = 11,
+    ['c'] = 12, ['C'] = 12,
+    ['d'] = 13, ['D'] = 13,
+    ['e'] = 14, ['E'] = 14,
+    ['f'] = 15, ['F'] = 15,
+};
+
 void linteger()
 {
     int base = 10;
@@ -424,21 +444,22 @@ void linteger()
     syntax_assert(base == 10 || isxdigit(*ldata),
         "integer prefix with no value");
 
-    while (isxdigit(*ldata))
+    while (1)
     {
         int digit;
 
-        if (*ldata <= '9') {
-            digit = *ldata++ - '0';
-        } else {
-            digit = 10 + tolower(*ldata++) - 'a';
+        digit = char_to_digit[(uint8_t)*ldata];
+
+        if (!digit && *ldata != '0') {
+            break;
         }
+
+        ++ldata;
 
         if (digit >= base)
         {
             syntax_errorf("integer literal digit is out of range for "
                 "base %d", base);
-            for (; isxdigit(*ldata); ++ldata);
             break;
         }
 
