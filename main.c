@@ -61,7 +61,9 @@ void* xmalloc_(int n, char* file, int line)
     void* res;
 
     res = malloc(n);
+#ifdef LOLIC_MALLOC_DEBUG
     errf("[%s:%d] malloc(%d) -> %p", file, line, n, res);
+#endif
 
     if (!res)
     {
@@ -78,7 +80,9 @@ void* xrealloc_(void* p, int n, char* file, int line)
     void* res;
 
     res = realloc(p, n);
+#ifdef LOLIC_MALLOC_DEBUG
     errf("[%s:%d] realloc(%p, %d) -> %p", file, line, p, n, res);
+#endif
 
     if (!res)
     {
