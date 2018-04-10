@@ -256,9 +256,9 @@ enum
     TOKEN_MODEQ,
     TOKEN_XOREQ,
     TOKEN_OREQ,
-    TOKEN_OR,
+    TOKEN_OROR,
     TOKEN_ANDEQ,
-    TOKEN_AND,
+    TOKEN_ANDAND,
     TOKEN_SHL,
     TOKEN_SHLEQ,
     TOKEN_BE,
@@ -335,9 +335,9 @@ char* lkindstr(int kind, char* buf)
     c(MODEQ);
     c(XOREQ);
     c(OREQ);
-    c(OR);
+    c(OROR);
     c(ANDEQ);
-    c(AND);
+    c(ANDAND);
     c(SHL);
     c(SHLEQ);
     c(BE);
@@ -703,8 +703,8 @@ void lnext()
     op1('/', '=', TOKEN_DIVEQ)
     op1('%', '=', TOKEN_MODEQ)
     op1('^', '=', TOKEN_XOREQ)
-    op2('|', '=', TOKEN_OREQ, '|', TOKEN_OR)
-    op2('&', '=', TOKEN_ANDEQ, '&', TOKEN_AND)
+    op2('|', '=', TOKEN_OREQ, '|', TOKEN_OROR)
+    op2('&', '=', TOKEN_ANDEQ, '&', TOKEN_ANDAND)
     shlr('<', '<', TOKEN_SHL, TOKEN_SHLEQ, '=', TOKEN_BE)
     shlr('>', '>', TOKEN_SHR, TOKEN_SHREQ, '=', TOKEN_GE)
 
@@ -789,10 +789,10 @@ void test_lex()
     lassert_tok(TOKEN_MODEQ);
     lassert_tok('&');
     lassert_tok(TOKEN_ANDEQ);
-    lassert_tok(TOKEN_AND);
+    lassert_tok(TOKEN_ANDAND);
     lassert_tok('|');
     lassert_tok(TOKEN_OREQ);
-    lassert_tok(TOKEN_OR);
+    lassert_tok(TOKEN_OROR);
     lassert_tok('^');
     lassert_tok(TOKEN_XOREQ);
     lassert_tok(0);
@@ -1694,24 +1694,24 @@ void print_operator(int op)
 
     switch (op)
     {
-    case TOKEN_INC:   s = "++";  break;
-    case TOKEN_DEC:   s = "--";  break;
-    case TOKEN_ADDEQ: s = "+=";  break;
-    case TOKEN_SUBEQ: s = "-=";  break;
-    case TOKEN_MULEQ: s = "*=";  break;
-    case TOKEN_DIVEQ: s = "/=";  break;
-    case TOKEN_MODEQ: s = "%=";  break;
-    case TOKEN_XOREQ: s = "^=";  break;
-    case TOKEN_OREQ:  s = "|=";  break;
-    case TOKEN_OR:    s = "||";  break;
-    case TOKEN_ANDEQ: s = "&=";  break;
-    case TOKEN_AND:   s = "&&";  break;
-    case TOKEN_SHL:   s = "<<";  break;
-    case TOKEN_SHLEQ: s = "<<="; break;
-    case TOKEN_BE:    s = "<=";  break;
-    case TOKEN_SHR:   s = ">>";  break;
-    case TOKEN_SHREQ: s = ">>="; break;
-    case TOKEN_GE:    s = ">=";  break;
+    case TOKEN_INC:    s = "++";  break;
+    case TOKEN_DEC:    s = "--";  break;
+    case TOKEN_ADDEQ:  s = "+=";  break;
+    case TOKEN_SUBEQ:  s = "-=";  break;
+    case TOKEN_MULEQ:  s = "*=";  break;
+    case TOKEN_DIVEQ:  s = "/=";  break;
+    case TOKEN_MODEQ:  s = "%=";  break;
+    case TOKEN_XOREQ:  s = "^=";  break;
+    case TOKEN_OREQ:   s = "|=";  break;
+    case TOKEN_OROR:   s = "||";  break;
+    case TOKEN_ANDEQ:  s = "&=";  break;
+    case TOKEN_ANDAND: s = "&&";  break;
+    case TOKEN_SHL:    s = "<<";  break;
+    case TOKEN_SHLEQ:  s = "<<="; break;
+    case TOKEN_BE:     s = "<=";  break;
+    case TOKEN_SHR:    s = ">>";  break;
+    case TOKEN_SHREQ:  s = ">>="; break;
+    case TOKEN_GE:     s = ">=";  break;
     }
 
     printf(s);
