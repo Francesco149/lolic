@@ -1478,7 +1478,7 @@ expr_t* expr_offsetof(typespec_t* type, char* field)
     return res;
 }
 
-expr_t* expr_push(int bits, expr_t* src, expr_t* dst)
+expr_t* expr_push(int bits, expr_t* dst, expr_t* src)
 {
     expr_t* res;
     int kind;
