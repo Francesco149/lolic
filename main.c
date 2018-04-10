@@ -803,6 +803,12 @@ void lnext()
         ldescribe(&ltok, 0), (uint64_t)i); \
     lnext()
 
+#define lassert_float(i) \
+    assertf(ltok.kind == TOKEN_FLOAT && ltok.u.f64 == i, \
+        "unexpected token. got %s, expected FLOAT: %lu", \
+        ldescribe(&ltok, 0), (uint64_t)i); \
+    lnext()
+
 #define lassert_tok(c) \
     assertf(ltok.kind == c, \
         "unexpected token. got %s, expected %s", \
@@ -871,6 +877,16 @@ void test_lex()
     i(01777777777777777777777)
 
 #undef i
+
+#define f(x) \
+    test_linit(#x); \
+    lassert_float(x); \
+    lassert_tok(0);
+
+    f(3.14) f(1e10) f(1e+10) f(1e-10) f(.1e10) f(.1e+10) f(.1e-10)
+    f(1.5e10) f(1.5e+10) f(1.5e-10) f(.1) f(1.)
+
+#undef f
 
     test_linit("0b0");
     lassert_int(0);
