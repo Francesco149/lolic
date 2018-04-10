@@ -886,6 +886,13 @@ void test_lex()
     lassert_int(0xFFFFFFFFFFFFFFFF);
     lassert_tok(0);
 
+    test_linit("abcdefghijklmnopqrstuvwxyz_ABCDEFGHIJKLMNOPQRSTUVWXYZ_"
+        "0123456789 blah");
+    lassert_name("abcdefghijklmnopqrstuvwxyz_ABCDEFGHIJKLMNOPQRSTUVWXYZ_"
+        "0123456789");
+    lassert_name("blah");
+    lassert_tok(0);
+
     log("(passed)");
 }
 
