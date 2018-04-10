@@ -242,7 +242,7 @@ void test_istr()
 
 enum
 {
-    TOKEN_LAST_LITERAL = 128,
+    TOKEN_LAST_LITERAL = 127,
     TOKEN_INT,
     TOKEN_FLOAT,
     TOKEN_NAME,
