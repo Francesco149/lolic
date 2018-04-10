@@ -291,6 +291,9 @@ enum
     TOKEN_OREQ,
     TOKEN_LAST_EQ = TOKEN_OREQ,
 
+    TOKEN_NEG,
+    TOKEN_NOT,
+
     TOKEN_INC,
     TOKEN_DEC,
 
@@ -377,6 +380,9 @@ char* lkinds[TOKEN_COUNT] =
     [TOKEN_SHLEQ] = "<<=",
     [TOKEN_SHREQ] = ">>=",
     [TOKEN_OREQ] = "|=",
+
+    [TOKEN_NEG] = "!",
+    [TOKEN_NOT] = "~",
 
     [TOKEN_INC] = "++",
     [TOKEN_DEC] = "--",
