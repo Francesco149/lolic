@@ -704,6 +704,7 @@ void lnext()
 
     case '~':
         ltok.kind = TOKEN_NOT;
+        ++ldata;
         break;
 
 #define op1(c, t, c1, t1) \
