@@ -293,6 +293,8 @@ enum
 
     TOKEN_INC,
     TOKEN_DEC,
+
+    TOKEN_COUNT,
 };
 
 enum
@@ -333,52 +335,72 @@ void linit(char* data)
     lnext();
 }
 
+char* lkinds[TOKEN_COUNT] =
+{
+    [0] = "EOF",
+
+    [TOKEN_INT] = "int",
+    [TOKEN_FLOAT] = "float",
+    [TOKEN_NAME] = "name",
+    [TOKEN_STRING] = "string",
+
+    [TOKEN_OROR] = "||",
+    [TOKEN_ANDAND] = "&&",
+
+    [TOKEN_EQEQ] = "==",
+    [TOKEN_NE] = "!=",
+    [TOKEN_BE] = "<=",
+    [TOKEN_GE] = ">=",
+    [TOKEN_GT] = "<",
+    [TOKEN_LT] = ">",
+
+    [TOKEN_ADD] = "+",
+    [TOKEN_SUB] = "-",
+    [TOKEN_OR] = "|",
+    [TOKEN_XOR] = "^",
+
+    [TOKEN_MUL] = "*",
+    [TOKEN_DIV] = "/",
+    [TOKEN_AND] = "&",
+    [TOKEN_MOD] = "%",
+    [TOKEN_SHL] = "<<",
+    [TOKEN_SHR] = ">>",
+
+    [TOKEN_EQ] = "=",
+    [TOKEN_ADDEQ] = "+=",
+    [TOKEN_SUBEQ] = "-=",
+    [TOKEN_MULEQ] = "*=",
+    [TOKEN_DIVEQ] = "/=",
+    [TOKEN_MODEQ] = "%=",
+    [TOKEN_XOREQ] = "^=",
+    [TOKEN_ANDEQ] = "&=",
+    [TOKEN_SHLEQ] = "<<=",
+    [TOKEN_SHREQ] = ">>=",
+    [TOKEN_OREQ] = "|=",
+
+    [TOKEN_INC] = "++",
+    [TOKEN_DEC] = "--",
+};
+
 char* lkindstr(int kind, char* buf)
 {
-    if (!buf) {
-        buf = (char*)xmalloc(4096);
-    }
+    buf = buf ? buf : xmalloc(4096);
 
     if (kind <= TOKEN_LAST_LITERAL)
     {
         sprintf(buf, "'%c' '\\x%02X'", (char)kind, kind);
-        goto done;
     }
 
-#define c(x) case TOKEN_##x: strcpy(buf, #x); break
-    switch (kind)
+    else if (kind >= TOKEN_COUNT)
     {
-    case 0: strcpy(buf, "EOF"); break;
-
-    c(INT);
-    c(FLOAT);
-    c(NAME);
-    c(STRING);
-    c(INC);
-    c(DEC);
-    c(ADDEQ);
-    c(SUBEQ);
-    c(MULEQ);
-    c(DIVEQ);
-    c(MODEQ);
-    c(XOREQ);
-    c(OREQ);
-    c(OROR);
-    c(ANDEQ);
-    c(ANDAND);
-    c(SHL);
-    c(SHLEQ);
-    c(BE);
-    c(SHR);
-    c(SHREQ);
-    c(GE);
-
-    default:
         sprintf(buf, "unknown token %d", kind);
     }
-#undef c
 
-done:
+    else
+    {
+        buf = lkinds[kind];
+    }
+
     return buf;
 }
 
