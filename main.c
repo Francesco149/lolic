@@ -2103,9 +2103,28 @@ void pexpect(int kind)
         "expected %s", ldescribe(&ltok, 0), lkindstr(kind, 0));
 }
 
-expr_t* pexpr_mul()
+expr_t* pexpr_unary()
 {
     return 0;
+}
+
+/* expr_unary (('*' | '/' | '&' | '%' | "<<" | ">>") expr_unary)* */
+expr_t* pexpr_mul()
+{
+    expr_t* res;
+
+    res = pexpr_unary();
+
+    while (prange(TOKEN_FIRST_MUL, TOKEN_LAST_MUL))
+    {
+        int operator;
+
+        operator = ltok.kind;
+        lnext();
+        res = expr_binary(operator, res, pexpr_unary());
+    }
+
+    return res;
 }
 
 /* expr_mul (('+' | '-' | '|' | '^') expr_mul)* */
