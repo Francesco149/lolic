@@ -629,14 +629,7 @@ void lstring_literal()
 
     while (*ldata && *ldata != '"')
     {
-        char c;
-
-        c = lchar();
-        if (!c) {
-            break;
-        }
-
-        bpush(str, c);
+        bpush(str, lchar());
     }
 
     bpush(str, 0);
