@@ -328,7 +328,7 @@ char* ldata;
 
 void lnext();
 
-void linit(char* data)
+void lreset(char* data)
 {
     ldata = data;
     lnext();
@@ -807,7 +807,7 @@ void lnext()
 
 void test_lex()
 {
-    linit("! ~ + ++ - -- * *= / /= % %= & &= && | |= || ^ ^= != == "
+    lreset("! ~ + ++ - -- * *= / /= % %= & &= && | |= || ^ ^= != == "
         "+= -= <<= >>= < << <= > >> >=");
     lassert_tok(TOKEN_NEG);
     lassert_tok(TOKEN_NOT);
@@ -844,7 +844,7 @@ void test_lex()
     lassert_tok(0);
 
 #define i(x) \
-    linit(#x); \
+    lreset(#x); \
     lassert_int(x##llu); \
     lassert_tok(0);
 
@@ -863,7 +863,7 @@ void test_lex()
 #undef i
 
 #define f(x) \
-    linit(#x); \
+    lreset(#x); \
     lassert_float(x); \
     lassert_tok(0);
 
@@ -872,28 +872,28 @@ void test_lex()
 
 #undef f
 
-    linit("0b0");
+    lreset("0b0");
     lassert_int(0);
     lassert_tok(0);
 
-    linit("0b10111010110111011100101011111110"
+    lreset("0b10111010110111011100101011111110"
                  "10111010101011011111000000001101");
     lassert_int(0xBADDCAFEBAADF00D);
     lassert_tok(0);
 
-    linit("0b11111111111111111111111111111111"
+    lreset("0b11111111111111111111111111111111"
                  "11111111111111111111111111111111");
     lassert_int(0xFFFFFFFFFFFFFFFF);
     lassert_tok(0);
 
-    linit("abcdefghijklmnopqrstuvwxyz_ABCDEFGHIJKLMNOPQRSTUVWXYZ_"
+    lreset("abcdefghijklmnopqrstuvwxyz_ABCDEFGHIJKLMNOPQRSTUVWXYZ_"
         "0123456789 blah");
     lassert_name("abcdefghijklmnopqrstuvwxyz_ABCDEFGHIJKLMNOPQRSTUVWXYZ_"
         "0123456789");
     lassert_name("blah");
     lassert_tok(0);
 
-    linit("\"hello\\nworld\\nthis is a test 123 321 \\\\\\\"\" 123");
+    lreset("\"hello\\nworld\\nthis is a test 123 321 \\\\\\\"\" 123");
     lassert_str("hello\nworld\nthis is a test 123 321 \\\"");
     lassert_int(123);
     lassert_tok(0);
