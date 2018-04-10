@@ -893,6 +893,11 @@ void test_lex()
     lassert_name("blah");
     lassert_tok(0);
 
+    test_linit("\"hello\\nworld\\nthis is a test 123 321\" 123");
+    lassert_str("hello\nworld\nthis is a test 123 321");
+    lassert_int(123);
+    lassert_tok(0);
+
     log("(passed)");
 }
 
