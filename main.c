@@ -169,8 +169,6 @@ void test_buf()
 
     assert(!a);
     assert(!blen(a));
-
-    log("(passed)");
 }
 
 /* --------------------------------------------------------------------- */
@@ -228,8 +226,6 @@ void test_istr()
     assert(str != sub);
     assert(istr(sub) == istr_r(str, str + 3));
     assert(strlen(istr_r(str, str + 3)) == 3);
-
-    log("(passed)");
 }
 
 /* --------------------------------------------------------------------- */
@@ -901,8 +897,6 @@ void test_lex()
     lassert_str("hello\nworld\nthis is a test 123 321 \\\"");
     lassert_int(123);
     lassert_tok(0);
-
-    log("(passed)");
 }
 
 /* --------------------------------------------------------------------- */
