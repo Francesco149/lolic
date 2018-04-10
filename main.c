@@ -702,9 +702,14 @@ void lnext()
         ltok.u.name = istr_r(ltok.start, ldata);
         break;
 
-#define op1(c, c1, t1) \
+    case '~':
+        ltok.kind = TOKEN_NOT;
+        break;
+
+#define op1(c, t, c1, t1) \
     case c: \
-        ltok.kind = *ldata++; \
+        ltok.kind = t; \
+        ++ldata; \
         \
         if (*ldata == c1) \
         { \
@@ -713,9 +718,10 @@ void lnext()
         } \
         break;
 
-#define op2(c, c1, t1, c2, t2) \
+#define op2(c, t, c1, t1, c2, t2) \
     case c: \
-        ltok.kind = *ldata++; \
+        ltok.kind = t; \
+        ++ldata; \
         \
         if (*ldata == c1) \
         { \
@@ -730,9 +736,10 @@ void lnext()
         } \
         break;
 
-#define shlr(c, c1, t1, t1eq, c2, t2) \
+#define shlr(c, t, c1, t1, t1eq, c2, t2) \
     case c: \
-        ltok.kind = *ldata++; \
+        ltok.kind = t; \
+        ++ldata; \
         \
         if (*ldata == c1) \
         { \
@@ -753,16 +760,18 @@ void lnext()
         } \
         break;
 
-    op2('+', '=', TOKEN_ADDEQ, '+', TOKEN_INC)
-    op2('-', '=', TOKEN_SUBEQ, '-', TOKEN_DEC)
-    op1('*', '=', TOKEN_MULEQ)
-    op1('/', '=', TOKEN_DIVEQ)
-    op1('%', '=', TOKEN_MODEQ)
-    op1('^', '=', TOKEN_XOREQ)
-    op2('|', '=', TOKEN_OREQ, '|', TOKEN_OROR)
-    op2('&', '=', TOKEN_ANDEQ, '&', TOKEN_ANDAND)
-    shlr('<', '<', TOKEN_SHL, TOKEN_SHLEQ, '=', TOKEN_BE)
-    shlr('>', '>', TOKEN_SHR, TOKEN_SHREQ, '=', TOKEN_GE)
+    op1('=', TOKEN_EQ,  '=', TOKEN_EQEQ)
+    op1('!', TOKEN_NEG, '=', TOKEN_NE)
+    op2('+', TOKEN_ADD, '=', TOKEN_ADDEQ, '+', TOKEN_INC)
+    op2('-', TOKEN_SUB, '=', TOKEN_SUBEQ, '-', TOKEN_DEC)
+    op1('*', TOKEN_MUL, '=', TOKEN_MULEQ)
+    op1('/', TOKEN_DIV, '=', TOKEN_DIVEQ)
+    op1('%', TOKEN_MOD, '=', TOKEN_MODEQ)
+    op1('^', TOKEN_XOR, '=', TOKEN_XOREQ)
+    op2('|', TOKEN_OR,  '=', TOKEN_OREQ,  '|', TOKEN_OROR)
+    op2('&', TOKEN_AND, '=', TOKEN_ANDEQ, '&', TOKEN_ANDAND)
+    shlr('<', TOKEN_LT, '<', TOKEN_SHL, TOKEN_SHLEQ, '=', TOKEN_BE)
+    shlr('>', TOKEN_GT, '>', TOKEN_SHR, TOKEN_SHREQ, '=', TOKEN_GE)
 
 #undef shlr
 #undef op2
@@ -809,16 +818,16 @@ void test_lex()
 {
     test_linit("XY+(XY)_HELLO1,234+FOO!994memes,\"hello world\\n\"");
     lassert_name("XY");
-    lassert_tok('+');
+    lassert_tok(TOKEN_ADD);
     lassert_tok('(');
     lassert_name("XY");
     lassert_tok(')');
     lassert_name("_HELLO1");
     lassert_tok(',');
     lassert_int(234);
-    lassert_tok('+');
+    lassert_tok(TOKEN_ADD);
     lassert_name("FOO");
-    lassert_tok('!');
+    lassert_tok(TOKEN_NEG);
     lassert_int(994);
     lassert_name("memes");
     lassert_tok(',');
@@ -826,38 +835,30 @@ void test_lex()
     lassert_tok(0);
 
     test_linit("+ ++ -- * *= / /= % %= & &= && | |= || ^ ^=");
-    lassert_tok('+');
+    lassert_tok(TOKEN_ADD);
     lassert_tok(TOKEN_INC);
     lassert_tok(TOKEN_DEC);
-    lassert_tok('*');
+    lassert_tok(TOKEN_MUL);
     lassert_tok(TOKEN_MULEQ);
-    lassert_tok('/');
+    lassert_tok(TOKEN_DIV);
     lassert_tok(TOKEN_DIVEQ);
-
-    if (ltok.kind != '%')
-    {
-        assertf(0, "unexpected token. got %s, expected %s",
-            ldescribe(&ltok, 0), lkindstr('%', 0));
-    }
-
-    lnext();
-
+    lassert_tok(TOKEN_MOD);
     lassert_tok(TOKEN_MODEQ);
-    lassert_tok('&');
+    lassert_tok(TOKEN_AND);
     lassert_tok(TOKEN_ANDEQ);
     lassert_tok(TOKEN_ANDAND);
-    lassert_tok('|');
+    lassert_tok(TOKEN_OR);
     lassert_tok(TOKEN_OREQ);
     lassert_tok(TOKEN_OROR);
-    lassert_tok('^');
+    lassert_tok(TOKEN_XOR);
     lassert_tok(TOKEN_XOREQ);
     lassert_tok(0);
 
     test_linit("< << <= > >> >=");
-    lassert_tok('<');
+    lassert_tok(TOKEN_LT);
     lassert_tok(TOKEN_SHL);
     lassert_tok(TOKEN_BE);
-    lassert_tok('>');
+    lassert_tok(TOKEN_GT);
     lassert_tok(TOKEN_SHR);
     lassert_tok(TOKEN_GE);
     lassert_tok(0);
