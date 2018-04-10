@@ -2102,10 +2102,12 @@ int prange(int first, int last)
     return ltok.kind >= first && ltok.kind <= last;
 }
 
+char ebuf[8192];
+
 void pexpect(int kind)
 {
-    syntax_assertf(pmatch(kind), "unexpected token. got %s, "
-        "expected %s", ldescribe(&ltok, 0), lkindstr(kind, 0));
+    syntax_assertf(pmatch(kind), "unexpected token. got %s, expected %s",
+        ldescribe(&ltok, ebuf), lkindstr(kind, ebuf + 4096));
 }
 
 expr_t* pexpr_primitive()
