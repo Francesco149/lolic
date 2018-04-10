@@ -404,7 +404,7 @@ char* lkindstr(int kind, char* buf)
 
     else
     {
-        buf = lkinds[kind];
+        sprintf(buf, lkinds[kind]);
     }
 
     return buf;
