@@ -2148,9 +2148,69 @@ void pexpect(int kind)
         ldescribe(&ltok, ebuf), lkindstr(kind, ebuf + 4096));
 }
 
+expr_t* pexpr();
+
 expr_t* pexpr_primitive()
 {
-    return 0;
+    return 0; /* TODO */
+}
+
+/*
+ * compoundlit_item = ('.' field_name '=')? expr
+ *
+ * expr_primitive ('(' expr? (',' expr)* ','? ')'
+ *               | '{' compoundlit_item? (',' compoundlit_item)* ','? '}'
+ *               | '.' field_name)?
+ */
+expr_t* pexpr_special()
+{
+    expr_t* res;
+
+    res = pexpr_primitive();
+
+    while (ppeek('(') || ppeek('{') || ppeek('.'))
+    {
+        if (pmatch('('))
+        {
+            expr_t** params = 0;
+
+            if (!pmatch(')'))
+            {
+                do { bpush(params, pexpr()); }
+                while (pmatch(','));
+            }
+
+            pexpect(')');
+
+            res = expr_call(res, params, blen(params));
+            bfree(params);
+        }
+
+        else if (pmatch('['))
+        {
+            expr_t* index;
+
+            index = pexpr();
+            pexpect(']');
+            res = expr_index(res, index);
+        }
+
+        else if (pmatch('.'))
+        {
+            char* name;
+
+            name = ltok.u.name;
+            pexpect(TOKEN_NAME);
+            res = expr_field(res, name);
+        }
+
+        else
+        {
+            syntax_errorf("unexpected token %s", ldescribe(&ltok, ebuf));
+        }
+    }
+
+    return res;
 }
 
 /* expr_primitive (('~' | '!' | '+' | '-' | '*' | '&') expr_unary)? */
@@ -2166,7 +2226,7 @@ expr_t* pexpr_unary()
         return expr_unary(operator, pexpr_unary());
     }
 
-    return pexpr_primitive();
+    return pexpr_special();
 }
 
 /* expr_unary (('*' | '/' | '&' | '%' | "<<" | ">>") expr_unary)* */
