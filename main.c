@@ -1404,7 +1404,7 @@ expr_t* expr_call(expr_t* function, expr_t** params, int nparams)
     return res;
 }
 
-expr_t* expr_aggregate(compoundlit_t* items, int nitems)
+expr_t* expr_compound(compoundlit_t* items, int nitems)
 {
     expr_t* res;
 
