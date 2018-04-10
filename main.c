@@ -853,6 +853,39 @@ void test_lex()
     lassert_tok(TOKEN_GE);
     lassert_tok(0);
 
+#define i(x) \
+    test_linit(#x); \
+    lassert_int(x##llu); \
+    lassert_tok(0);
+
+    i(0)
+    i(1234567890)
+    i(18446744073709551615)
+
+    i(0x0)
+    i(0x1234567890ABCDEF)
+    i(0xFFFFFFFFFFFFFFFF)
+
+    i(00)
+    i(0123456701234)
+    i(01777777777777777777777)
+
+#undef i
+
+    test_linit("0b0");
+    lassert_int(0);
+    lassert_tok(0);
+
+    test_linit("0b10111010110111011100101011111110"
+                 "10111010101011011111000000001101");
+    lassert_int(0xBADDCAFEBAADF00D);
+    lassert_tok(0);
+
+    test_linit("0b11111111111111111111111111111111"
+                 "11111111111111111111111111111111");
+    lassert_int(0xFFFFFFFFFFFFFFFF);
+    lassert_tok(0);
+
     log("(passed)");
 }
 
