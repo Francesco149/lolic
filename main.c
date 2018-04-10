@@ -2094,7 +2094,7 @@ int pmatch(int token)
 
 int prange(int first, int last)
 {
-    return ltok.kind >= first && ltok.kind < last;
+    return ltok.kind >= first && ltok.kind <= last;
 }
 
 void pexpect(int kind)
