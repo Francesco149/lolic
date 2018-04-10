@@ -2156,10 +2156,8 @@ expr_t* pexpr_primitive()
 }
 
 /*
- * compoundlit_item = ('.' field_name '=')? expr
- *
  * expr_primitive ('(' expr? (',' expr)* ','? ')'
- *               | '{' compoundlit_item? (',' compoundlit_item)* ','? '}'
+ *               | '[' expr ']'
  *               | '.' field_name)?
  */
 expr_t* pexpr_special()
