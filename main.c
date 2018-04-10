@@ -2059,10 +2059,96 @@ int pmatch(int token)
     return 0;
 }
 
+int prange(int first, int last)
+{
+    return ltok.kind >= first && ltok.kind < last;
+}
+
 void pexpect(int kind)
 {
     syntax_assertf(pmatch(kind), "unexpected token. got %s, "
         "expected %s", ldescribe(&ltok, 0), lkindstr(kind, 0));
+}
+
+expr_t* pexpr_add()
+{
+    return 0;
+}
+
+/* expr_add (("==" | ">=" | "<=" | '<' | '>') expr_add)* */
+expr_t* pexpr_cmp()
+{
+    expr_t* res;
+
+    res = pexpr_add();
+
+    while (prange(TOKEN_FIRST_CMP, TOKEN_LAST_CMP))
+    {
+        int operator;
+
+        operator = ltok.kind;
+        lnext();
+        res = expr_binary(operator, res, pexpr_add());
+    }
+
+    return res;
+}
+
+/* expr_cmp ("&&" expr_cmp)* */
+expr_t* pexpr_andand()
+{
+    expr_t* res;
+
+    res = pexpr_cmp();
+
+    while (pmatch(TOKEN_ANDAND))
+    {
+        res = expr_binary(TOKEN_ANDAND, res, pexpr_cmp());
+    }
+
+    return res;
+}
+
+/* expr_andand ("||" expr_andand)* */
+expr_t* pexpr_oror()
+{
+    expr_t* res;
+
+    res = pexpr_andand();
+
+    while (pmatch(TOKEN_OROR))
+    {
+        res = expr_binary(TOKEN_OROR, res, pexpr_andand());
+    }
+
+    return res;
+}
+
+/* expr_oror ('?' expr_ternary ':' expr_ternary)? */
+expr_t* pexpr_ternary()
+{
+    expr_t* res;
+
+    res = pexpr_oror();
+
+    if (pmatch('?'))
+    {
+        expr_t* then;
+        expr_t* else_;
+
+        then = pexpr_ternary();
+        pexpect(':');
+        else_ = pexpr_ternary();
+
+        return expr_ternary(res, then, else_);
+    }
+
+    return res;
+}
+
+expr_t* pexpr()
+{
+    return pexpr_ternary();
 }
 
 void test_p()
