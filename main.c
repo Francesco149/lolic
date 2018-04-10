@@ -1110,6 +1110,7 @@ enum
     EXPR_FLOAT,
     EXPR_STR,
     EXPR_NAME,
+    EXPR_TERNARY,
     EXPR_BINARY,
     EXPR_UNARY,
     EXPR_CALL,
@@ -1141,6 +1142,14 @@ struct expr
         uint64_t u64;
         double f64;
         char* str;
+
+        struct
+        {
+            expr_t* cond;
+            expr_t* then;
+            expr_t* else_;
+        }
+        ternary;
 
         struct
         {
@@ -1238,6 +1247,18 @@ expr_t* expr_name(char* name)
 
     res = expr(EXPR_NAME);
     res->u.str = name;
+
+    return res;
+}
+
+expr_t* expr_ternary(expr_t* cond, expr_t* then, expr_t* else_)
+{
+    expr_t* res;
+
+    res = expr(EXPR_TERNARY);
+    res->u.ternary.cond = cond;
+    res->u.ternary.then = then;
+    res->u.ternary.else_ = else_;
 
     return res;
 }
