@@ -1205,6 +1205,8 @@ enum
     EXPR_UNARY,
     EXPR_CALL,
     EXPR_AGGREGATE,
+    EXPR_FIELD,
+    EXPR_INDEX,
     EXPR_TOINT,
     EXPR_TOFLOAT,
     EXPR_SIZEOF,
@@ -1270,6 +1272,20 @@ struct expr
             int nitems;
         }
         aggregate;
+
+        struct
+        {
+            expr_t* object;
+            char* field_name;
+        }
+        field;
+
+        struct
+        {
+            expr_t* array;
+            expr_t* index;
+        }
+        index;
 
         expr_t* expr;
         typespec_t* sizeof_type;
@@ -1395,6 +1411,28 @@ expr_t* expr_aggregate(aggregate_init_item_t* items, int nitems)
     res = expr(EXPR_AGGREGATE);
     res->u.aggregate.items = ast_dup(items, nitems);
     res->u.aggregate.nitems = nitems;
+
+    return res;
+}
+
+expr_t* expr_field(expr_t* object, char* field_name)
+{
+    expr_t* res;
+
+    res = expr(EXPR_FIELD);
+    res->u.field.object = object;
+    res->u.field.field_name = field_name;
+
+    return res;
+}
+
+expr_t* expr_index(expr_t* array, expr_t* index)
+{
+    expr_t* res;
+
+    res = expr(EXPR_INDEX);
+    res->u.index.array = array;
+    res->u.index.index = index;
 
     return res;
 }
