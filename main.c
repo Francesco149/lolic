@@ -236,9 +236,9 @@ void test_istr()
 
 #define syntax_errorf(fmt, ...) fprintf(stderr, fmt "\n", __VA_ARGS__)
 #define syntax_error(fmt) fprintf(stderr, fmt "\n")
-#define syntax_assert(cond, msg) for (; !(cond); syntax_error(msg))
+#define syntax_assert(cond, msg) ((cond) ? 0 : syntax_error(msg))
 #define syntax_assertf(cond, ...) \
-    for (; !(cond); syntax_errorf(__VA_ARGS__))
+    ((cond) ? 0 :  syntax_errorf(__VA_ARGS__))
 
 enum
 {
