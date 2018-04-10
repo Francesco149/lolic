@@ -817,24 +817,6 @@ void test_linit(char* src)
 
 void test_lex()
 {
-    test_linit("XY+(XY)_HELLO1,234+FOO!994memes,\"hello world\\n\"");
-    lassert_name("XY");
-    lassert_tok(TOKEN_ADD);
-    lassert_tok('(');
-    lassert_name("XY");
-    lassert_tok(')');
-    lassert_name("_HELLO1");
-    lassert_tok(',');
-    lassert_int(234);
-    lassert_tok(TOKEN_ADD);
-    lassert_name("FOO");
-    lassert_tok(TOKEN_NEG);
-    lassert_int(994);
-    lassert_name("memes");
-    lassert_tok(',');
-    lassert_str("hello world\n");
-    lassert_tok(0);
-
     test_linit("! ~ + ++ - -- * *= / /= % %= & &= && | |= || ^ ^= != == "
         "+= -= <<= >>= < << <= > >> >=");
     lassert_tok(TOKEN_NEG);
