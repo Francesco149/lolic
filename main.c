@@ -289,7 +289,7 @@ struct token
         char* name;
         char* string;
     }
-    data;
+    u;
 };
 
 typedef struct token token_t;
@@ -369,19 +369,19 @@ char* ldescribe(token_t* tok, char* buf)
     switch (tok->kind)
     {
     case TOKEN_INT:
-        sprintf(p, ": %lu", ltok.data.u64);
+        sprintf(p, ": %lu", ltok.u.u64);
         break;
 
     case TOKEN_FLOAT:
-        sprintf(p, ": %.17f", ltok.data.f64);
+        sprintf(p, ": %.17f", ltok.u.f64);
         break;
 
     case TOKEN_NAME:
-        sprintf(p, ": %s (%p)", ltok.data.name, ltok.data.name);
+        sprintf(p, ": %s (%p)", ltok.u.name, ltok.u.name);
         break;
 
     case TOKEN_STRING:
-        sprintf(p, ": %s", ltok.data.string);
+        sprintf(p, ": %s", ltok.u.string);
         break;
     }
 
@@ -476,7 +476,7 @@ void linteger()
 
     ltok.kind = TOKEN_INT;
     ltok.modifier = mod;
-    ltok.data.u64 = val;
+    ltok.u.u64 = val;
 }
 
 void lfloat()
@@ -505,7 +505,7 @@ void lfloat()
     }
 
     ltok.kind = TOKEN_FLOAT;
-    ltok.data.f64 = strtod(start, 0);
+    ltok.u.f64 = strtod(start, 0);
 }
 
 void lexpect(char c)
@@ -562,7 +562,7 @@ void lchar_literal()
 
     ltok.kind = TOKEN_INT;
     ltok.modifier = MOD_CHR;
-    ltok.data.u64 = val;
+    ltok.u.u64 = val;
 }
 
 void lstring_literal()
@@ -588,7 +588,7 @@ void lstring_literal()
     lexpect('"');
 
     ltok.kind = TOKEN_STRING;
-    ltok.data.string = str;
+    ltok.u.string = str;
 }
 
 void lnext()
@@ -643,7 +643,7 @@ void lnext()
             ++ldata;
         }
 
-        ltok.data.name = istr_r(ltok.start, ldata);
+        ltok.u.name = istr_r(ltok.start, ldata);
         break;
 
 #define op1(c, c1, t1) \
@@ -720,19 +720,19 @@ void lnext()
 }
 
 #define lassert_name(s) \
-    assertf(ltok.kind == TOKEN_NAME && ltok.data.name == istr(s), \
+    assertf(ltok.kind == TOKEN_NAME && ltok.u.name == istr(s), \
         "unexpected token. got %s, expected NAME: %s (%p)", \
         ldescribe(&ltok, 0), s, s); \
     lnext()
 
 #define lassert_str(s) \
-    assertf(ltok.kind == TOKEN_STRING && !strcmp(ltok.data.string, s), \
+    assertf(ltok.kind == TOKEN_STRING && !strcmp(ltok.u.string, s), \
         "unexpected token. got %s, expected STRING: %s (%p)", \
         ldescribe(&ltok, 0), s, s); \
     lnext()
 
 #define lassert_int(i) \
-    assertf(ltok.kind == TOKEN_INT && ltok.data.u64 == i, \
+    assertf(ltok.kind == TOKEN_INT && ltok.u.u64 == i, \
         "unexpected token. got %s, expected INT: %lu", \
         ldescribe(&ltok, 0), (uint64_t)i); \
     lnext()
