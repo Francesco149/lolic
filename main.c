@@ -835,7 +835,9 @@ void test_lex()
     lassert_str("hello world\n");
     lassert_tok(0);
 
-    test_linit("+ ++ -- * *= / /= % %= & &= && | |= || ^ ^=");
+    test_linit("! ~ + ++ -- * *= / /= % %= & &= && | |= || ^ ^= != ==");
+    lassert_tok(TOKEN_NEG);
+    lassert_tok(TOKEN_NOT);
     lassert_tok(TOKEN_ADD);
     lassert_tok(TOKEN_INC);
     lassert_tok(TOKEN_DEC);
@@ -853,6 +855,8 @@ void test_lex()
     lassert_tok(TOKEN_OROR);
     lassert_tok(TOKEN_XOR);
     lassert_tok(TOKEN_XOREQ);
+    lassert_tok(TOKEN_NE);
+    lassert_tok(TOKEN_EQEQ);
     lassert_tok(0);
 
     test_linit("< << <= > >> >=");
