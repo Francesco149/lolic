@@ -2092,6 +2092,11 @@ int pmatch(int token)
     return 0;
 }
 
+int ppeek(int kind)
+{
+    return ltok.kind == kind;
+}
+
 int prange(int first, int last)
 {
     return ltok.kind >= first && ltok.kind <= last;
@@ -2103,9 +2108,25 @@ void pexpect(int kind)
         "expected %s", ldescribe(&ltok, 0), lkindstr(kind, 0));
 }
 
-expr_t* pexpr_unary()
+expr_t* pexpr_primitive()
 {
     return 0;
+}
+
+/* expr_primitive (('~' | '!' | '+' | '-' | '*' | '&') expr_unary)? */
+expr_t* pexpr_unary()
+{
+    if (ppeek(TOKEN_NOT) || ppeek(TOKEN_NEG) || ppeek(TOKEN_ADD) ||
+        ppeek(TOKEN_SUB) || ppeek(TOKEN_MUL) || ppeek(TOKEN_AND))
+    {
+        int operator;
+
+        operator = ltok.kind;
+        lnext();
+        return expr_unary(operator, pexpr_unary());
+    }
+
+    return pexpr_primitive();
 }
 
 /* expr_unary (('*' | '/' | '&' | '%' | "<<" | ">>") expr_unary)* */
