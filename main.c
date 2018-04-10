@@ -2200,7 +2200,7 @@ expr_t* pexpr_ternary()
 
 /*
  * expr_ternary (('=' | "+=" | "-=" | "*=" |  "/=" | "%=" | "^=" | "&="
- *                | "<<=" | ">>=" | "|=") expr_assignment)*
+ *                | "<<=" | ">>=" | "|=") expr_assignment)?
  *
  * note the right-associativity
  * a = b = c = d;
