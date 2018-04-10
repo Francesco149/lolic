@@ -2198,9 +2198,35 @@ expr_t* pexpr_ternary()
     return res;
 }
 
+/*
+ * expr_ternary (('=' | "+=" | "-=" | "*=" |  "/=" | "%=" | "^=" | "&="
+ *                | "<<=" | ">>=" | "|=") expr_assignment)*
+ *
+ * note the right-associativity
+ * a = b = c = d;
+ * a = (b = (c = d));
+ */
+expr_t* pexpr_assignment()
+{
+    expr_t* res;
+
+    res = pexpr_ternary();
+
+    if (prange(TOKEN_FIRST_EQ, TOKEN_LAST_EQ))
+    {
+        int operator;
+
+        operator = ltok.kind;
+        lnext();
+        return expr_binary(operator, res, pexpr_assignment());
+    }
+
+    return res;
+}
+
 expr_t* pexpr()
 {
-    return pexpr_ternary();
+    return pexpr_assignment();
 }
 
 void test_p()
