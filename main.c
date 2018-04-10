@@ -1204,7 +1204,7 @@ enum
     EXPR_BINARY,
     EXPR_UNARY,
     EXPR_CALL,
-    EXPR_AGGREGATE,
+    EXPR_COMPOUND,
     EXPR_FIELD,
     EXPR_INDEX,
     EXPR_TOINT,
@@ -1217,13 +1217,13 @@ enum
     EXPR_PUSH64,
 };
 
-struct aggregate_init_item
+struct compoundlit
 {
     char* name;
     expr_t* value;
 };
 
-typedef struct aggregate_init_item aggregate_init_item_t;
+typedef struct compoundlit compoundlit_t;
 
 struct expr
 {
@@ -1268,10 +1268,10 @@ struct expr
 
         struct
         {
-            aggregate_init_item_t* items;
+            compoundlit_t* items;
             int nitems;
         }
-        aggregate;
+        compound;
 
         struct
         {
@@ -1404,13 +1404,13 @@ expr_t* expr_call(expr_t* function, expr_t** params, int nparams)
     return res;
 }
 
-expr_t* expr_aggregate(aggregate_init_item_t* items, int nitems)
+expr_t* expr_aggregate(compoundlit_t* items, int nitems)
 {
     expr_t* res;
 
-    res = expr(EXPR_AGGREGATE);
-    res->u.aggregate.items = ast_dup(items, nitems);
-    res->u.aggregate.nitems = nitems;
+    res = expr(EXPR_COMPOUND);
+    res->u.compound.items = ast_dup(items, nitems);
+    res->u.compound.nitems = nitems;
 
     return res;
 }
@@ -1898,12 +1898,12 @@ void print_expr(expr_t* expr, int indent)
         printf(")");
         break;
 
-    case EXPR_AGGREGATE:
-        printf("(aggregate\n");
+    case EXPR_COMPOUND:
+        printf("(compound\n");
 
-        for (i = 0; i < expr->u.aggregate.nitems; ++i)
+        for (i = 0; i < expr->u.compound.nitems; ++i)
         {
-            aggregate_init_item_t* it = &expr->u.aggregate.items[i];
+            compoundlit_t* it = &expr->u.compound.items[i];
 
             printf("\n");
             print_indent(indent + 1);
