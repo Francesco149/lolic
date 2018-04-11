@@ -1287,7 +1287,8 @@ enum
     EXPR_INDEX,
     EXPR_TOINT,
     EXPR_TOFLOAT,
-    EXPR_SIZEOF,
+    EXPR_SIZEOF_TYPE,
+    EXPR_SIZEOF_EXPR,
     EXPR_OFFSETOF,
     EXPR_PUSH8,
     EXPR_PUSH16,
@@ -1535,12 +1536,22 @@ expr_t* expr_tofloat(expr_t* exp)
     return res;
 }
 
-expr_t* expr_sizeof(typespec_t* type)
+expr_t* expr_sizeof_type(typespec_t* type)
 {
     expr_t* res;
 
-    res = expr(EXPR_SIZEOF);
+    res = expr(EXPR_SIZEOF_TYPE);
     res->u.sizeof_type = type;
+
+    return res;
+}
+
+expr_t* expr_sizeof_expr(expr_t* exp)
+{
+    expr_t* res;
+
+    res = expr(EXPR_SIZEOF_EXPR);
+    res->u.expr = exp;
 
     return res;
 }
@@ -2003,9 +2014,15 @@ void print_expr(expr_t* expr, int indent)
         printf(")");
         break;
 
-    case EXPR_SIZEOF:
-        printf("(sizeof ");
+    case EXPR_SIZEOF_TYPE:
+        printf("(sizeof-type ");
         print_typespec(expr->u.sizeof_type);
+        printf(")");
+        break;
+
+    case EXPR_SIZEOF_EXPR:
+        printf("(sizeof-expr ");
+        print_expr(expr->u.expr, indent);
         printf(")");
         break;
 
