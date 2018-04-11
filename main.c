@@ -2728,6 +2728,7 @@ void test_expr(char* code)
 void test_p()
 {
     test_expr("(a + b + sizeof(c) + (flags & SOME_FLAG ? x : y))");
+    test_expr("1 * 2 + 3 + 4 / 2");
     test_expr(
         "weak = (\n"
         "    e1 & FIRE  && e2 & (WATER | ROCK) ||\n"
