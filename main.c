@@ -412,7 +412,11 @@ void linit()
 {
     int nblocks;
 
-    nblocks = blen(intern_allocator.chunks) || 1;
+    nblocks = blen(intern_allocator.chunks);
+
+    if (!nblocks) {
+        nblocks = 1;
+    }
 
     init_kword(int);
     init_kword(float);
