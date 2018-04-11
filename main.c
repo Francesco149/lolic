@@ -2286,12 +2286,44 @@ int pexpect(int kind)
     return 1;
 }
 
+expr_t* pexpr();
+
+/* name ('*' | '[' expr ']')* */
 typespec_t* ptype()
 {
-    return 0; /* TODO */
-}
+    typespec_t* res;
+    char* name;
 
-expr_t* pexpr();
+    name = ltok.u.name;
+    res = typespec_name(name);
+
+    if (!pexpect(TOKEN_NAME)) {
+        name = 0;
+    }
+
+    for (;;)
+    {
+        if (pmatch('*')) {
+            res = typespec_ptr(res);
+        }
+
+        else if (pmatch('['))
+        {
+            expr_t* len;
+
+            len = pexpr();
+            pexpect(']');
+
+            res = typespec_array(res, len);
+        }
+
+        else {
+            break;
+        }
+    }
+
+    return res;
+}
 
 /* "sizeof" '(' (expr | type) ')' */
 expr_t* pexpr_sizeof()
