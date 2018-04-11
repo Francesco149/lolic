@@ -1977,6 +1977,8 @@ void print_expr(expr_t* expr, int indent)
             print_expr(it->value, indent);
             printf(")");
         }
+
+        printf(")");
         break;
 
     case EXPR_FIELD:
