@@ -1688,7 +1688,7 @@ struct stmt
         {
             stmt_t* init;
             expr_t* cond;
-            stmt_t* iter;
+            expr_t* iter;
             stmt_t* body;
         }
         loop;
@@ -1779,7 +1779,7 @@ stmt_t* stmt_loop(int kind, expr_t* cond, stmt_t* body)
     return res;
 }
 
-stmt_t* stmt_for(stmt_t* init, expr_t* cond, stmt_t* iter,
+stmt_t* stmt_for(stmt_t* init, expr_t* cond, expr_t* iter,
     stmt_t* body)
 {
     stmt_t* res;
@@ -2189,7 +2189,7 @@ void print_stmt(stmt_t* stmt, int indent)
         printf(" ");
         print_expr(stmt->u.loop.cond, indent);
         printf(" ");
-        print_stmt(stmt->u.loop.iter, indent);
+        print_expr(stmt->u.loop.iter, indent);
         printf("\n");
         printf("(do\n");
         print_stmt(stmt->u.loop.body, indent + 1);
