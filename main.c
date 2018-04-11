@@ -1907,6 +1907,7 @@ void print_expr(expr_t* expr, int indent)
     switch (expr->kind)
     {
     case EXPR_INT:
+        /* TODO preserve the base that was specified in the code */
         printf("%lu", expr->u.u64);
         break;
 
