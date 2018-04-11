@@ -1979,6 +1979,12 @@ void print_expr(expr_t* expr, int indent)
         }
         break;
 
+    case EXPR_FIELD:
+        printf("(get ");
+        print_expr(expr->u.field.object, 0);
+        printf(" %s)", expr->u.field.field_name);
+        break;
+
     case EXPR_TOINT:
         printf("(int ");
         print_expr(expr->u.expr, indent);
@@ -2780,6 +2786,8 @@ void test_p()
         "   .bottom = y + height,\n"
         "}"
     );
+    test_expr("b = pt.x");
+    test_expr("left = rect.lt.x");
 }
 
 /* --------------------------------------------------------------------- */
