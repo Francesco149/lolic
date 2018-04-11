@@ -2771,6 +2771,10 @@ void test_p()
     test_expr("value = *p");
     test_expr("point = {}");
     test_expr("point = { x, y }");
+    test_expr("point = { .x = .37, .37 }");
+    test_expr("point = { .37, .37 }");
+    test_expr("point = { .x = 13.37, 13.37 }");
+    test_expr("point = { 13.37, 13.37 }");
     test_expr(
         "rect = {\n"
         "   x, y,\n"
