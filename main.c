@@ -1902,41 +1902,6 @@ void print_decl(decl_t* decl, int indent)
     }
 }
 
-void print_operator(int op)
-{
-    char* s;
-
-    if (op < TOKEN_LAST_LITERAL)
-    {
-        printf("%c", op);
-        return;
-    }
-
-    switch (op)
-    {
-    case TOKEN_INC:    s = "++";  break;
-    case TOKEN_DEC:    s = "--";  break;
-    case TOKEN_ADDEQ:  s = "+=";  break;
-    case TOKEN_SUBEQ:  s = "-=";  break;
-    case TOKEN_MULEQ:  s = "*=";  break;
-    case TOKEN_DIVEQ:  s = "/=";  break;
-    case TOKEN_MODEQ:  s = "%=";  break;
-    case TOKEN_XOREQ:  s = "^=";  break;
-    case TOKEN_OREQ:   s = "|=";  break;
-    case TOKEN_OROR:   s = "||";  break;
-    case TOKEN_ANDEQ:  s = "&=";  break;
-    case TOKEN_ANDAND: s = "&&";  break;
-    case TOKEN_SHL:    s = "<<";  break;
-    case TOKEN_SHLEQ:  s = "<<="; break;
-    case TOKEN_BE:     s = "<=";  break;
-    case TOKEN_SHR:    s = ">>";  break;
-    case TOKEN_SHREQ:  s = ">>="; break;
-    case TOKEN_GE:     s = ">=";  break;
-    }
-
-    printf(s);
-}
-
 void print_expr(expr_t* expr, int indent)
 {
     int i;
@@ -1960,9 +1925,7 @@ void print_expr(expr_t* expr, int indent)
         break;
 
     case EXPR_BINARY:
-        printf("(");
-        print_operator(expr->u.binary.operator);
-        printf(" ");
+        printf("(%s ", lkinds[expr->u.binary.operator]);
         print_expr(expr->u.binary.left, indent);
         printf(" ");
         print_expr(expr->u.binary.right, indent);
@@ -1970,9 +1933,7 @@ void print_expr(expr_t* expr, int indent)
         break;
 
     case EXPR_UNARY:
-        printf("(");
-        print_operator(expr->u.unary.operator);
-        printf(" ");
+        printf("(%s ", lkinds[expr->u.unary.operator]);
         print_expr(expr->u.unary.operand, indent);
         printf(")");
         break;
