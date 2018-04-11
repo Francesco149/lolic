@@ -404,6 +404,18 @@ char* kword_push16;
 char* kword_push32;
 char* kword_push64;
 
+char* kword_if;
+char* kword_else;
+char* kword_while;
+char* kword_for;
+char* kword_do;
+char* kword_switch;
+char* kword_pick;
+char* kword_break;
+char* kword_continue;
+char* kword_fallthrough;
+char* kword_return;
+
 void linit()
 {
     int nblocks;
@@ -423,10 +435,22 @@ void linit()
     init_kword(push32);
     init_kword(push64);
 
+    init_kword(if);
+    init_kword(else);
+    init_kword(while);
+    init_kword(for);
+    init_kword(do);
+    init_kword(switch);
+    init_kword(pick);
+    init_kword(break);
+    init_kword(continue);
+    init_kword(fallthrough);
+    init_kword(return);
+
     assert(blen(intern_allocator.chunks) == nblocks);
 
     first_kword = kword_toint;
-    last_kword = kword_push64;
+    last_kword = kword_return;
 }
 
 void lnext();
@@ -1636,6 +1660,7 @@ expr_t* expr_push(int bits, expr_t* dst, expr_t* src)
 enum
 {
     STMT_NONE,
+    STMT_NOOP,
     STMT_DECL,
     STMT_BREAK,
     STMT_CONTINUE,
@@ -2096,6 +2121,9 @@ void print_stmt(stmt_t* stmt, int indent)
 
     switch (stmt->kind)
     {
+    case STMT_NOOP:
+        break;
+
     case STMT_DECL:
         print_decl(stmt->u.decl, indent);
         break;
@@ -2775,6 +2803,161 @@ expr_t* pexpr_assignment()
 expr_t* pexpr()
 {
     return pexpr_assignment();
+}
+
+/* typespec ':' name ('=' expr)? */
+decl_t* pdecl_var()
+{
+    typespec_t* type;
+    char* name;
+    expr_t* expr = 0;
+
+    type = ptype();
+    pexpect(':');
+    name = ltok.u.name;
+
+    if (!pexpect(TOKEN_NAME)) {
+        name = 0;
+    }
+
+    if (pmatch(TOKEN_EQ)) {
+        expr = pexpr();
+    }
+
+    return decl_var(name, expr, type);
+}
+
+/*
+ * decl = decl_var
+ *      | (("struct" | "union") name '{' decl_var* '}')
+ *
+ * stmt_switch = "switch" '(' expr ')' '{'
+ *               ("case" expr ':') | ("default" ':') | stmt
+ *               '}'
+ * stmt_pick = "pick" '(' expr ')' '{'
+ *             ("case" expr ':') | ("default" ':') | stmt
+ *             '}'
+ *
+ * stmt_base = '' | decl | "break" | "continue" | "fallthrough" | expr
+ *           | ("return" expr) | stmt_do | stmt_switch | stmt_pick
+ */
+
+stmt_t* pstmt_base()
+{
+    /*
+     * TODO:
+     * gotta look ahead to distinguish between expressions and declarations
+     * because we don't know until we hit the ':', is there a clean way
+     * to do this?
+     */
+
+    return stmt(STMT_NOOP);
+}
+
+/* stmt_block | stmt_if | stmt_while | stmt_for | (stmt_base ';') */
+stmt_t* pstmt()
+{
+    /* '{' stmt* '}' ';'* */
+    if (pmatch('{'))
+    {
+        stmt_t** stmts = 0;
+
+        while (!ppeek(0) && !ppeek('}')) {
+            bpush(stmts, pstmt());
+        }
+
+        pexpect('}');
+
+        return stmt_block(stmts, blen(stmts));
+    }
+
+    /* "if" '(' expr ')' stmt ("else" stmt)? */
+    if (pmatch_kword(kword_if))
+    {
+        expr_t* cond;
+        stmt_t* then;
+        stmt_t* else_ = 0;
+
+        pexpect('(');
+        cond = pexpr();
+        pexpect(')');
+        then = pstmt();
+
+        if (pmatch_kword(kword_else)) {
+            else_ = pstmt();
+        }
+
+        return stmt_if(cond, then, else_);
+    }
+
+    /* "while" '(' expr ')' stmt */
+    if (pmatch_kword(kword_while))
+    {
+        expr_t* cond;
+        stmt_t* body;
+
+        pexpect('(');
+        cond = pexpr();
+        pexpect(')');
+        body = pstmt();
+
+        return stmt_loop(STMT_WHILE, cond, body);
+    }
+
+    /* "do" '{' stmt '}' "while" '(' expr ')' */
+    if (pmatch_kword(kword_do))
+    {
+        stmt_t* body;
+        expr_t* cond;
+
+        body = pstmt();
+        pexpect('(');
+        cond = pexpr();
+        pexpect(')');
+
+        return stmt_loop(STMT_DO, cond, body);
+    }
+
+    /* "for" '(' stmt expr? ';' expr? ')' stmt */
+    if (pmatch_kword(kword_for))
+    {
+        stmt_t* init = 0;
+        expr_t* cond = 0;
+        expr_t* iter = 0;
+        stmt_t* body;
+
+        pexpect('(');
+
+        init = pstmt();
+
+        if (!pmatch(';'))
+        {
+            cond = pexpr();
+            pexpect(';');
+        }
+
+        if (!pmatch(')'))
+        {
+            iter = pexpr();
+            pexpect(')');
+        }
+
+        body = pstmt();
+
+        return stmt_for(init, cond, iter, body);
+    }
+
+    /* stmt_base ';' */
+    else
+    {
+        stmt_t* res;
+
+        res = pstmt_base();
+        pexpect(';');
+        return res;
+    }
+
+    return 0;
 }
 
 void test_expr(char* code)
