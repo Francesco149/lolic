@@ -2738,12 +2738,21 @@ void test_p()
         "    e1 & GRASS && e2 & FIRE\n"
         ")"
     );
+
     test_expr("push8(p, 0755)");
     test_expr("push16(p, 0b1000000000000000)");
     test_expr("push32(p, 0xAABBCCDD)");
     test_expr("push64(p, 6000000000)");
     test_expr("push64(p, push8(p, 10))");
     test_expr("a = b = meme_memes + 10");
+    test_expr(
+        "long_ass_function(\n"
+        "    long_ass_param_1,\n"
+        "    long_ass_param_2,\n"
+        "    long_ass_param_3,\n"
+        "    long_ass_param_4,\n"
+        ")"
+    );
 }
 
 /* --------------------------------------------------------------------- */
