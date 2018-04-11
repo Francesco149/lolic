@@ -399,8 +399,8 @@ int is_kword(char* str)
     return str >= first_kword && str <= last_kword;
 }
 
-char* kword_int;
-char* kword_float;
+char* kword_toint;
+char* kword_tofloat;
 char* kword_sizeof;
 char* kword_offsetof;
 char* kword_push8;
@@ -418,8 +418,8 @@ void linit()
         nblocks = 1;
     }
 
-    init_kword(int);
-    init_kword(float);
+    init_kword(toint);
+    init_kword(tofloat);
     init_kword(sizeof);
     init_kword(offsetof);
     init_kword(push8);
@@ -429,7 +429,7 @@ void linit()
 
     assert(blen(intern_allocator.chunks) == nblocks);
 
-    first_kword = kword_int;
+    first_kword = kword_toint;
     last_kword = kword_push64;
 }
 
@@ -1017,9 +1017,9 @@ void test_lex()
     lassert_int(123);
     lassert_tok(0);
 
-    lreset("int float sizeof offsetof push8 push16 push32 push64");
-    lassert_kword("int");
-    lassert_kword("float");
+    lreset("toint tofloat sizeof offsetof push8 push16 push32 push64");
+    lassert_kword("toint");
+    lassert_kword("tofloat");
     lassert_kword("sizeof");
     lassert_kword("offsetof");
     lassert_kword("push8");

@@ -83,9 +83,9 @@ for (int64: i = 0; i < 10; ++i)
 double: x = 5.5;
 double: y = 10.123123;
 
-"pixel position: %d %d\n", int(x), int(y);
+"pixel position: %d %d\n", toint(x), toint(y);
 
-// there's also double() to convert to double
+// there's also tofloat() to convert to float
 
 // ------------------------------------------------------------------------
 
