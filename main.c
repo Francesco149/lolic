@@ -2008,7 +2008,7 @@ void print_expr(expr_t* expr, int indent)
     case EXPR_PUSH16:
     case EXPR_PUSH32:
     case EXPR_PUSH64:
-        printf("(push%d ", 2 << (expr->kind - EXPR_PUSH8 + 3));
+        printf("(push%d ", 1 << (expr->kind - EXPR_PUSH8 + 3));
         print_expr(expr->u.push.dst, indent);
         printf(" ");
         print_expr(expr->u.push.src, indent);
