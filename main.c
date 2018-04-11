@@ -748,7 +748,11 @@ void lnext()
     switch (*ldata)
     {
     case '.':
-        lfloat();
+        if (isdigit(ldata[1])) {
+            lfloat();
+        } else {
+            ltok.kind = *ldata++;
+        }
         break;
 
     case '\'':
