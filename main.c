@@ -218,16 +218,6 @@ void* memchunks_alloc(memchunks_t* m, int n)
 
 memchunks_t intern_allocator;
 
-void* intern_dup(void* p, int n)
-{
-    void* dup;
-
-    dup = memchunks_alloc(&intern_allocator, n);
-    memcpy(dup, p, n);
-
-    return dup;
-}
-
 struct intern
 {
     char* str;
@@ -255,7 +245,9 @@ char* istr_r(char* start, char* end)
         }
     }
 
-    new.str = intern_dup(start, len);
+    new.str = memchunks_alloc(&intern_allocator, len + 1);
+    memcpy(new.str, start, len);
+    new.str[len] = 0;
     new.len = len;
     bpush(interns, new);
 
