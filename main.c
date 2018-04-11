@@ -2756,6 +2756,9 @@ void test_p()
     test_expr("foo()");
     test_expr("(((1+1)))");
     test_expr("3.14 * 1e10 + 1");
+    test_expr("a || !b ? x * -z : a + +y");
+    test_expr("p = &var");
+    test_expr("value = *p");
 }
 
 /* --------------------------------------------------------------------- */
