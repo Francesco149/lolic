@@ -1924,6 +1924,16 @@ void print_expr(expr_t* expr, int indent)
         printf("%s", expr->u.str);
         break;
 
+    case EXPR_TERNARY:
+        printf("(? ");
+        print_expr(expr->u.ternary.cond, indent);
+        printf(" ");
+        print_expr(expr->u.ternary.then, indent);
+        printf(" ");
+        print_expr(expr->u.ternary.else_, indent);
+        printf(")");
+        break;
+
     case EXPR_BINARY:
         printf("(%s ", lkinds[expr->u.binary.operator]);
         print_expr(expr->u.binary.left, indent);
@@ -2708,9 +2718,26 @@ expr_t* pexpr()
     return pexpr_assignment();
 }
 
+void test_expr(char* code)
+{
+    printf("code:\n%s\n\n", code);
+    lreset(code);
+    printf("syntax tree:\n");
+    print_expr(pexpr(), 0);
+    printf("\n\n\n");
+}
+
 void test_p()
 {
-
+    test_expr("(a + b + sizeof(c) + (flags & SOME_FLAG ? x : y))");
+    test_expr(
+        "weak = (\n"
+        "    e1 & FIRE  && e2 & (WATER | ROCK) ||\n"
+        "    e1 & ROCK  && e2 & (WATER | GRASS) ||\n"
+        "    e1 & WATER && e2 & GRASS ||\n"
+        "    e1 & GRASS && e2 & FIRE\n"
+        ")"
+    );
 }
 
 /* --------------------------------------------------------------------- */
