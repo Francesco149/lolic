@@ -1129,14 +1129,6 @@ typespec_t* typespec_ptr(typespec_t* pointed)
 struct stmt;
 typedef struct stmt stmt_t;
 
-struct stmt_block
-{
-    stmt_t** stmts;
-    int nstmts;
-};
-
-typedef struct stmt_block stmt_block_t;
-
 enum
 {
     DECL_NONE,
@@ -1203,7 +1195,7 @@ struct decl
             typespec_t* ret_type;
             func_param_t* params;
             int nparams;
-            stmt_block_t body;
+            stmt_t* body;
         }
         func;
     }
@@ -1259,7 +1251,7 @@ decl_t* decl_enum(enum_item_t* items, int nitems)
 }
 
 decl_t* decl_func(char* name, typespec_t* ret_type, func_param_t* params,
-    int nparams, stmt_block_t body)
+    int nparams, stmt_t* body)
 {
     decl_t* res;
 
@@ -1659,21 +1651,14 @@ enum
     STMT_PICK,
 };
 
-struct elseif
-{
-    expr_t* cond;
-    stmt_block_t body;
-};
-
 struct switch_case
 {
     expr_t* exprs;
     int nexprs;
-    stmt_block_t body;
+    stmt_t* body;
 };
 
 typedef struct switch_case switch_case_t;
-typedef struct elseif elseif_t;
 
 struct stmt
 {
@@ -1683,15 +1668,19 @@ struct stmt
     {
         decl_t* decl;
         expr_t* expr;
-        stmt_block_t block;
+
+        struct
+        {
+            stmt_t** stmts;
+            int nstmts;
+        }
+        block;
 
         struct
         {
             expr_t* cond;
-            stmt_block_t then;
-            elseif_t* elseifs;
-            int nelseifs;
-            stmt_block_t else_;
+            stmt_t* then;
+            stmt_t* else_;
         }
         if_;
 
@@ -1700,7 +1689,7 @@ struct stmt
             stmt_t* init;
             expr_t* cond;
             stmt_t* iter;
-            stmt_block_t body;
+            stmt_t* body;
         }
         loop;
 
@@ -1715,16 +1704,23 @@ struct stmt
     u;
 };
 
-stmt_block_t stmt_block(stmt_t** stmts, int nstmts) {
-    return (stmt_block_t){ast_dup(stmts, nstmts), nstmts};
-}
-
 stmt_t* stmt(int kind)
 {
     stmt_t* res;
 
     res = (stmt_t*)ast_alloc(sizeof(stmt_t));
     res->kind = kind;
+
+    return res;
+}
+
+stmt_t* stmt_block(stmt_t** stmts, int nstmts)
+{
+    stmt_t* res;
+
+    res = stmt(STMT_BLOCK);
+    res->u.block.stmts = ast_dup(stmts, nstmts);
+    res->u.block.nstmts = nstmts;
 
     return res;
 }
@@ -1759,22 +1755,19 @@ stmt_t* stmt_return(expr_t* expr)
     return res;
 }
 
-stmt_t* stmt_if(expr_t* cond, stmt_block_t then, elseif_t* elseifs,
-    int nelseifs, stmt_block_t else_)
+stmt_t* stmt_if(expr_t* cond, stmt_t* then, stmt_t* else_)
 {
     stmt_t* res;
 
     res = stmt(STMT_IF);
     res->u.if_.cond = cond;
     res->u.if_.then = then;
-    res->u.if_.elseifs = ast_dup(elseifs, nelseifs);
-    res->u.if_.nelseifs = nelseifs;
     res->u.if_.else_ = else_;
 
     return res;
 }
 
-stmt_t* stmt_loop(int kind, expr_t* cond, stmt_block_t body)
+stmt_t* stmt_loop(int kind, expr_t* cond, stmt_t* body)
 {
     stmt_t* res;
 
@@ -1787,7 +1780,7 @@ stmt_t* stmt_loop(int kind, expr_t* cond, stmt_block_t body)
 }
 
 stmt_t* stmt_for(stmt_t* init, expr_t* cond, stmt_t* iter,
-    stmt_block_t body)
+    stmt_t* body)
 {
     stmt_t* res;
 
@@ -1849,7 +1842,7 @@ void print_typespec(typespec_t* type, int indent)
     }
 }
 
-void print_stmt_block(stmt_block_t block, int indent);
+void print_stmt(stmt_t* stmt, int indent);
 
 void print_decl(decl_t* decl, int indent)
 {
@@ -1940,7 +1933,7 @@ void print_decl(decl_t* decl, int indent)
 
         printf(")\n");
 
-        print_stmt_block(decl->u.func.body, indent + 1);
+        print_stmt(decl->u.func.body, indent + 1);
         printf(")");
         break;
 
@@ -2137,7 +2130,17 @@ void print_stmt(stmt_t* stmt, int indent)
 
     case STMT_BLOCK:
         printf("(do\n");
-        print_stmt_block(stmt->u.block, indent + 1);
+
+        for (i = 0; i < stmt->u.block.nstmts; ++i)
+        {
+            if (i) {
+                printf("\n");
+                print_indent(indent + 1);
+            }
+
+            print_stmt(stmt->u.block.stmts[i], indent + 1);
+        }
+
         printf(")");
         break;
 
@@ -2148,26 +2151,13 @@ void print_stmt(stmt_t* stmt, int indent)
         print_indent(indent);
 
         printf("(then\n");
-        print_stmt_block(stmt->u.if_.then, indent + 1);
+        print_stmt(stmt->u.if_.then, indent + 1);
         printf(")");
 
-        for (i = 0; i < stmt->u.if_.nelseifs; ++i)
-        {
-            elseif_t* it = &stmt->u.if_.elseifs[i];
-
-            printf("(elsif ");
-            print_expr(it->cond, indent);
-            printf("\n");
-            print_indent(indent);
-            printf("(then\n");
-            print_stmt_block(it->body, indent + 1);
-            printf("))");
-        }
-
-        if (stmt->u.if_.else_.nstmts)
+        if (stmt->u.if_.else_)
         {
             printf("(else\n");
-            print_stmt_block(stmt->u.if_.else_, indent + 1);
+            print_stmt(stmt->u.if_.else_, indent + 1);
             printf(")");
         }
 
@@ -2179,14 +2169,14 @@ void print_stmt(stmt_t* stmt, int indent)
         print_expr(stmt->u.loop.cond, indent);
         printf("\n");
         printf("(do\n");
-        print_stmt_block(stmt->u.loop.body, indent + 1);
+        print_stmt(stmt->u.loop.body, indent + 1);
         printf("))");
         break;
 
     case STMT_DO:
         printf("(loop\n");
         printf("(do\n");
-        print_stmt_block(stmt->u.loop.body, indent + 1);
+        print_stmt(stmt->u.loop.body, indent + 1);
         printf(")\n");
         printf("(while ");
         print_expr(stmt->u.loop.cond, indent);
@@ -2202,7 +2192,7 @@ void print_stmt(stmt_t* stmt, int indent)
         print_stmt(stmt->u.loop.iter, indent);
         printf("\n");
         printf("(do\n");
-        print_stmt_block(stmt->u.loop.body, indent + 1);
+        print_stmt(stmt->u.loop.body, indent + 1);
         printf("))");
         break;
 
@@ -2229,7 +2219,7 @@ void print_stmt(stmt_t* stmt, int indent)
 
             printf(")\n");
             printf("(do\n");
-            print_stmt_block(it->body, indent + 1);
+            print_stmt(it->body, indent + 1);
             printf("))\n");
         }
         break;
@@ -2237,26 +2227,6 @@ void print_stmt(stmt_t* stmt, int indent)
     default:
         assertf(0, "unknown stmt kind %d", stmt->kind);
     }
-}
-
-void print_stmts(stmt_t** stmts, int nstmts, int indent)
-{
-    int i;
-
-    for (i = 0; i < nstmts; ++i)
-    {
-        if (i) {
-            printf("\n");
-            print_indent(indent);
-        }
-
-        print_stmt(stmts[i], indent);
-    }
-}
-
-void print_stmt_block(stmt_block_t block, int indent)
-{
-    print_stmts(block.stmts, block.nstmts, indent);
 }
 
 /* --------------------------------------------------------------------- */
