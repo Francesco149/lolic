@@ -2310,7 +2310,7 @@ expr_t* pexpr_sizeof()
         expr = pexpr();
         pexpect(')');
 
-        if (expr->kind != EXPR_NAME || expr->kind != EXPR_FIELD) {
+        if (expr->kind != EXPR_NAME && expr->kind != EXPR_FIELD) {
             syntax_error("sizeof only applies to names and fields");
         }
 
