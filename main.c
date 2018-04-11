@@ -2452,7 +2452,8 @@ expr_t* pexpr_push()
 
 /*
  * compoundlit_item = (('.' field_name) | ('[' expr ']') '=')? expr
- * | '{' (compoundlit_item (',' compoundlit_item)* ','?)? '}'
+ *
+ * '{' (compoundlit_item (',' compoundlit_item)* ','?)? '}'
  */
 expr_t* pexpr_compound()
 {
