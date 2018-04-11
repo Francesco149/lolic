@@ -173,6 +173,61 @@ void test_buf()
 
 /* --------------------------------------------------------------------- */
 
+#define CHUNK_SIZE (1024 * 1024)
+#define CHUNK_ALIGN 8
+
+struct memchunks
+{
+    char** chunks;
+    char* p;
+    char* end;
+};
+
+typedef struct memchunks memchunks_t;
+
+void memchunks_grow(memchunks_t* m, int min_size)
+{
+    char* new_chunk;
+    int size = round_up(min_size, CHUNK_SIZE);
+
+    new_chunk = xmalloc(size);
+    bpush(m->chunks, new_chunk);
+    m->p = new_chunk;
+    m->end = new_chunk + size;
+}
+
+void* memchunks_alloc(memchunks_t* m, int n)
+{
+    void* res;
+
+    if (m->p + n >= m->end)
+    {
+        memchunks_grow(m, n);
+        assert(m->end - m->p >= n);
+    }
+
+    res = m->p;
+    m->p += n;
+    m->p = roundptr_up(m->p, CHUNK_ALIGN);
+    assert(m->p == roundptr_down(m->p, CHUNK_ALIGN));
+
+    return res;
+}
+
+/* --------------------------------------------------------------------- */
+
+memchunks_t intern_allocator;
+
+void* intern_dup(void* p, int n)
+{
+    void* dup;
+
+    dup = memchunks_alloc(&intern_allocator, n);
+    memcpy(dup, p, n);
+
+    return dup;
+}
+
 struct intern
 {
     char* str;
@@ -200,7 +255,7 @@ char* istr_r(char* start, char* end)
         }
     }
 
-    new.str = strndup(start, len);
+    new.str = intern_dup(start, len);
     new.len = len;
     bpush(interns, new);
 
@@ -897,49 +952,7 @@ void test_lex()
     lassert_str("hello\nworld\nthis is a test 123 321 \\\"");
     lassert_int(123);
     lassert_tok(0);
-}
 
-/* --------------------------------------------------------------------- */
-
-#define CHUNK_SIZE (1024 * 1024)
-#define CHUNK_ALIGN 8
-
-struct memchunks
-{
-    char** chunks;
-    char* p;
-    char* end;
-};
-
-typedef struct memchunks memchunks_t;
-
-void memchunks_grow(memchunks_t* m, int min_size)
-{
-    char* new_chunk;
-    int size = round_up(min_size, CHUNK_SIZE);
-
-    new_chunk = xmalloc(size);
-    bpush(m->chunks, new_chunk);
-    m->p = new_chunk;
-    m->end = new_chunk + size;
-}
-
-void* memchunks_alloc(memchunks_t* m, int n)
-{
-    void* res;
-
-    if (m->p + n >= m->end)
-    {
-        memchunks_grow(m, n);
-        assert(m->end - m->p >= n);
-    }
-
-    res = m->p;
-    m->p += n;
-    m->p = roundptr_up(m->p, CHUNK_ALIGN);
-    assert(m->p == roundptr_down(m->p, CHUNK_ALIGN));
-
-    return res;
 }
 
 /* --------------------------------------------------------------------- */
