@@ -2465,6 +2465,26 @@ expr_t* pexpr_primitive()
         return expr_float(f64);
     }
 
+    if (ppeek(TOKEN_STRING))
+    {
+        char* str;
+
+        str = ltok.u.string;
+        lnext();
+
+        return expr_str(str);
+    }
+
+    if (ppeek(TOKEN_NAME))
+    {
+        char* name;
+
+        name = ltok.u.string;
+        lnext();
+
+        return expr_name(name);
+    }
+
     if (pmatch_kword(kword_toint)) {
         return expr_toint(pexpr());
     }
