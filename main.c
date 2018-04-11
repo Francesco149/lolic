@@ -492,18 +492,15 @@ char* lkindstr(int kind, char* buf)
 {
     buf = buf ? buf : xmalloc(4096);
 
-    if (kind <= TOKEN_LAST_LITERAL)
-    {
+    if (kind <= TOKEN_LAST_LITERAL) {
         sprintf(buf, "'%c' '\\x%02X'", (char)kind, kind);
     }
 
-    else if (kind >= TOKEN_COUNT)
-    {
+    else if (kind >= TOKEN_COUNT) {
         sprintf(buf, "unknown token %d", kind);
     }
 
-    else
-    {
+    else {
         sprintf(buf, lkinds[kind]);
     }
 
@@ -729,8 +726,7 @@ void lstring_literal()
 
     lexpect('"');
 
-    while (*ldata && *ldata != '"')
-    {
+    while (*ldata && *ldata != '"') {
         bpush(str, lchar());
     }
 
@@ -1028,8 +1024,7 @@ void test_lex()
 
 memchunks_t ast_allocator;
 
-void* ast_alloc(int size)
-{
+void* ast_alloc(int size) {
     return memchunks_alloc(&ast_allocator, size);
 }
 
@@ -1671,8 +1666,7 @@ struct stmt
     u;
 };
 
-stmt_block_t stmt_block(stmt_t** stmts, int nstmts)
-{
+stmt_block_t stmt_block(stmt_t** stmts, int nstmts) {
     return (stmt_block_t){ast_dup(stmts, nstmts), nstmts};
 }
 
@@ -2661,8 +2655,7 @@ expr_t* pexpr_oror()
 
     res = pexpr_andand();
 
-    while (pmatch(TOKEN_OROR))
-    {
+    while (pmatch(TOKEN_OROR)) {
         res = expr_binary(TOKEN_OROR, res, pexpr_andand());
     }
 
