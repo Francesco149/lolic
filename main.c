@@ -1046,6 +1046,9 @@ void* ast_dup_n(void* p, int n)
 
 /* --------------------------------------------------------------------- */
 
+struct expr;
+typedef struct expr expr_t;
+
 struct typespec;
 typedef struct typespec typespec_t;
 
@@ -1068,7 +1071,7 @@ struct typespec
         struct
         {
             typespec_t* element_type;
-            int len;
+            expr_t* len;
         }
         array;
 
@@ -1097,7 +1100,7 @@ typespec_t* typespec_name(char* name)
     return res;
 }
 
-typespec_t* typespec_array(typespec_t* element_type, int len)
+typespec_t* typespec_array(typespec_t* element_type, expr_t* len)
 {
     typespec_t* res;
 
@@ -1120,10 +1123,7 @@ typespec_t* typespec_ptr(typespec_t* pointed)
 
 /* --------------------------------------------------------------------- */
 
-struct expr;
 struct stmt;
-
-typedef struct expr expr_t;
 typedef struct stmt stmt_t;
 
 struct stmt_block
@@ -1776,7 +1776,9 @@ void print_indent(int indent)
     }
 }
 
-void print_typespec(typespec_t* type)
+void print_expr(expr_t* expr, int indent);
+
+void print_typespec(typespec_t* type, int indent)
 {
     switch (type->kind)
     {
@@ -1786,19 +1788,20 @@ void print_typespec(typespec_t* type)
 
     case TYPE_ARRAY:
         printf("(array ");
-        print_typespec(type->u.array.element_type);
-        printf(" %d)", type->u.array.len);
+        print_typespec(type->u.array.element_type, indent);
+        printf(" ");
+        print_expr(type->u.array.len, indent);
+        printf(")");
         break;
 
     case TYPE_PTR:
         printf("(ptr ");
-        print_typespec(type->u.pointed);
+        print_typespec(type->u.pointed, indent);
         printf(")");
         break;
     }
 }
 
-void print_expr(expr_t* expr, int indent);
 void print_stmt_block(stmt_block_t block, int indent);
 
 void print_decl(decl_t* decl, int indent)
@@ -1811,7 +1814,7 @@ void print_decl(decl_t* decl, int indent)
     {
     case DECL_VAR:
         printf("(");
-        print_typespec(decl->u.var.type);
+        print_typespec(decl->u.var.type, indent);
         printf(" %s ", decl->name);
 
         if (decl->u.var.expr) {
@@ -1838,7 +1841,7 @@ void print_decl(decl_t* decl, int indent)
             printf("\n");
             print_indent(indent + 1);
             printf("(");
-            print_typespec(it->type);
+            print_typespec(it->type, indent);
             printf(" %s)", it->name);
         }
 
@@ -1864,7 +1867,7 @@ void print_decl(decl_t* decl, int indent)
 
     case DECL_FUNC:
         printf("(func (");
-        print_typespec(decl->u.func.ret_type);
+        print_typespec(decl->u.func.ret_type, indent);
         printf(" %s) (", decl->name);
 
         for (i = 0; i < decl->u.func.nparams; ++i)
@@ -1876,7 +1879,7 @@ void print_decl(decl_t* decl, int indent)
             }
 
             printf("(");
-            print_typespec(it->type);
+            print_typespec(it->type, indent);
             printf(" %s ", it->name);
 
             if (it->default_val) {
@@ -2016,7 +2019,7 @@ void print_expr(expr_t* expr, int indent)
 
     case EXPR_SIZEOF_TYPE:
         printf("(sizeof-type ");
-        print_typespec(expr->u.sizeof_type);
+        print_typespec(expr->u.sizeof_type, indent);
         printf(")");
         break;
 
@@ -2028,7 +2031,7 @@ void print_expr(expr_t* expr, int indent)
 
     case EXPR_OFFSETOF:
         printf("(offsetof ");
-        print_typespec(expr->u.offsetof_.type);
+        print_typespec(expr->u.offsetof_.type, indent);
         printf(" %s)", expr->u.offsetof_.field);
         break;
 
