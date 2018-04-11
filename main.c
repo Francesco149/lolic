@@ -4,6 +4,10 @@
  * I will likely rewrite the compiler from scratch properly, unless I
  * grow attached to this code base for some reason
  *
+ * this is heavily inspired by bitwise, which taught me a lot of parsing
+ * tricks https://bitwise.handmade.network/
+ *
+ *
  * # license
  * this is free and unencumbered software released into the public domain.
  * refer to the attached UNLICENSE or http://unlicense.org/
