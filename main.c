@@ -299,6 +299,7 @@ enum
     TOKEN_FLOAT,
     TOKEN_NAME,
     TOKEN_STRING,
+    TOKEN_KWORD,
 
     TOKEN_OROR,
     TOKEN_ANDAND,
@@ -381,6 +382,53 @@ typedef struct token token_t;
 token_t ltok;
 char* ldata;
 
+char** kwords;
+char* first_kword;
+char* last_kword;
+
+#define init_kword(kword) init_kword_(&kword_##kword, #kword)
+char* init_kword_(char** pkword, char* str)
+{
+    *pkword = istr(str);
+    bpush(kwords, *pkword);
+    return *pkword;
+}
+
+int is_kword(char* str)
+{
+    return str >= first_kword && str <= last_kword;
+}
+
+char* kword_int;
+char* kword_float;
+char* kword_sizeof;
+char* kword_offsetof;
+char* kword_push8;
+char* kword_push16;
+char* kword_push32;
+char* kword_push64;
+
+void linit()
+{
+    int nblocks;
+
+    nblocks = blen(intern_allocator.chunks) || 1;
+
+    init_kword(int);
+    init_kword(float);
+    init_kword(sizeof);
+    init_kword(offsetof);
+    init_kword(push8);
+    init_kword(push16);
+    init_kword(push32);
+    init_kword(push64);
+
+    assert(blen(intern_allocator.chunks) == nblocks);
+
+    first_kword = kword_int;
+    last_kword = kword_push64;
+}
+
 void lnext();
 
 void lreset(char* data)
@@ -397,6 +445,7 @@ char* lkinds[TOKEN_COUNT] =
     [TOKEN_FLOAT] = "float",
     [TOKEN_NAME] = "name",
     [TOKEN_STRING] = "string",
+    [TOKEN_KWORD] = "keyword",
 
     [TOKEN_OROR] = "||",
     [TOKEN_ANDAND] = "&&",
@@ -484,6 +533,7 @@ char* ldescribe(token_t* tok, char* buf)
         break;
 
     case TOKEN_NAME:
+    case TOKEN_KWORD:
         sprintf(p, ": %s (%p)", ltok.u.name, ltok.u.name);
         break;
 
@@ -745,6 +795,10 @@ void lnext()
         }
 
         ltok.u.name = istr_r(ltok.start, ldata);
+
+        if (is_kword(ltok.u.name)) {
+            ltok.kind = TOKEN_KWORD;
+        }
         break;
 
     case '~':
@@ -839,6 +893,12 @@ void lnext()
 #define lassert_str(s) \
     assertf(ltok.kind == TOKEN_STRING && !strcmp(ltok.u.string, s), \
         "unexpected token. got %s, expected STRING: %s (%p)", \
+        ldescribe(&ltok, 0), s, s); \
+    lnext()
+
+#define lassert_kword(s) \
+    assertf(ltok.kind == TOKEN_KWORD && ltok.u.name == istr(s), \
+        "unexpected token. got %s, expected KWORD: %s (%p)", \
         ldescribe(&ltok, 0), s, s); \
     lnext()
 
@@ -953,6 +1013,15 @@ void test_lex()
     lassert_int(123);
     lassert_tok(0);
 
+    lreset("int float sizeof offsetof push8 push16 push32 push64");
+    lassert_kword("int");
+    lassert_kword("float");
+    lassert_kword("sizeof");
+    lassert_kword("offsetof");
+    lassert_kword("push8");
+    lassert_kword("push16");
+    lassert_kword("push32");
+    lassert_kword("push64");
 }
 
 /* --------------------------------------------------------------------- */
@@ -2401,6 +2470,7 @@ void tests()
 
 int main()
 {
+    linit();
     tests();
 
     return 0;
