@@ -2493,11 +2493,15 @@ expr_t* pexpr_special()
         {
             expr_t** params = 0;
 
-            if (!pmatch(')'))
+            do
             {
-                do { bpush(params, pexpr()); }
-                while (pmatch(','));
+                if (ppeek(')')) {
+                    break;
+                }
+
+                bpush(params, pexpr());
             }
+            while (pmatch(','));
 
             pexpect(')');
 
