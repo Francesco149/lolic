@@ -118,9 +118,9 @@ typedef struct bufhdr bufhdr_t;
     (bfits(x, n) ? 0 \
      : (*(void**)&(x) = bgrw(x, blen(x) + (n), sizeof(*(x)))))
 
-#define bpush(x, val) \
+#define bpush(x, ...) \
     bfit(x, 1), \
-    (x)[blen(x)] = (val), \
+    (x)[blen(x)] = (__VA_ARGS__), \
     ++bhdr(x)->len
 
 void* bgrw(void* x, int len, int elem_size)
