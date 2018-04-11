@@ -1299,13 +1299,58 @@ enum
     EXPR_PUSH64,
 };
 
+enum
+{
+    COMPOUND_NONE,
+    COMPOUND_INDEX,
+    COMPOUND_FIELD,
+};
+
 struct compoundlit_item
 {
-    char* name;
+    int kind;
     expr_t* value;
+
+    union
+    {
+        expr_t* index;
+        char* name;
+    }
+    u;
 };
 
 typedef struct compoundlit_item compoundlit_item_t;
+
+compoundlit_item_t* compoundlit_item(int kind, expr_t* value)
+{
+    compoundlit_item_t* res;
+
+    res = ast_alloc(sizeof(compoundlit_item_t));
+    res->kind = kind;
+    res->value = value;
+
+    return res;
+}
+
+compoundlit_item_t* compoundlit_index(expr_t* index, expr_t* value)
+{
+    compoundlit_item_t* res;
+
+    res = compoundlit_item(COMPOUND_INDEX, value);
+    res->u.index = index;
+
+    return res;
+}
+
+compoundlit_item_t* compoundlit_field(char* name, expr_t* value)
+{
+    compoundlit_item_t* res;
+
+    res = compoundlit_item(COMPOUND_FIELD, value);
+    res->u.name = name;
+
+    return res;
+}
 
 struct expr
 {
@@ -1350,7 +1395,7 @@ struct expr
 
         struct
         {
-            compoundlit_item_t* items;
+            compoundlit_item_t** items;
             int nitems;
         }
         compound;
@@ -1486,7 +1531,7 @@ expr_t* expr_call(expr_t* function, expr_t** params, int nparams)
     return res;
 }
 
-expr_t* expr_compound(compoundlit_item_t* items, int nitems)
+expr_t* expr_compound(compoundlit_item_t** items, int nitems)
 {
     expr_t* res;
 
@@ -1969,11 +2014,28 @@ void print_expr(expr_t* expr, int indent)
 
         for (i = 0; i < expr->u.compound.nitems; ++i)
         {
-            compoundlit_item_t* it = &expr->u.compound.items[i];
+            compoundlit_item_t* it = expr->u.compound.items[i];
 
             printf("\n");
             print_indent(indent + 1);
-            printf("(%s ", it->name ? it->name : "nil");
+
+            if (it->kind == COMPOUND_FIELD) {
+                printf("(field %s ", it->u.name ? it->u.name : "nil");
+            }
+
+            else if (it->kind == COMPOUND_INDEX)
+            {
+                printf("(index ");
+
+                if (it->u.index) {
+                    print_expr(it->u.index, indent);
+                } else {
+                    printf("nil");
+                }
+
+                printf(" ");
+            }
+
             print_expr(it->value, indent);
             printf(")");
         }
@@ -2389,18 +2451,17 @@ expr_t* pexpr_push()
 }
 
 /*
- * compoundlit_item = ('.' field_name '=')? expr
+ * compoundlit_item = (('.' field_name) | ('[' expr ']') '=')? expr
  * | '{' (compoundlit_item (',' compoundlit_item)* ','?)? '}'
  */
 expr_t* pexpr_compound()
 {
-    compoundlit_item_t* items = 0;
+    compoundlit_item_t** items = 0;
 
     pexpect('{');
 
     do
     {
-        char* name = 0;
         expr_t* value;
 
         if (ppeek('}')) {
@@ -2409,14 +2470,31 @@ expr_t* pexpr_compound()
 
         if (pmatch('.'))
         {
+            char* name;
+
             name = ltok.u.name;
             pexpect(TOKEN_NAME);
             pexpect(TOKEN_EQ);
+            value = pexpr();
+
+            bpush(items, compoundlit_field(name, value));
         }
 
-        value = pexpr();
+        else if (pmatch('['))
+        {
+            expr_t* index;
 
-        bpush(items, (compoundlit_item_t){name, value});
+            index = pexpr();
+            pexpect(']');
+            pexpect(TOKEN_EQ);
+            value = pexpr();
+
+            bpush(items, compoundlit_index(index, value));
+        }
+
+        else {
+            bpush(items, compoundlit_field(0, pexpr()));
+        }
     }
     while(pmatch(','));
 
@@ -2790,6 +2868,27 @@ void test_p()
         "   .top = y,\n"
         "   .right = x + width,\n"
         "   .bottom = y + height,\n"
+        "}"
+    );
+    test_expr(
+        "char_to_digit =\n"
+        "{\n"
+        "    ['0'] = 0,\n"
+        "    ['1'] = 1,\n"
+        "    ['2'] = 2,\n"
+        "    ['3'] = 3,\n"
+        "    ['4'] = 4,\n"
+        "    ['5'] = 5,\n"
+        "    ['6'] = 6,\n"
+        "    ['7'] = 7,\n"
+        "    ['8'] = 8,\n"
+        "    ['9'] = 9,\n"
+        "    ['a'] = 10, ['A'] = 10,\n"
+        "    ['b'] = 11, ['B'] = 11,\n"
+        "    ['c'] = 12, ['C'] = 12,\n"
+        "    ['d'] = 13, ['D'] = 13,\n"
+        "    ['e'] = 14, ['E'] = 14,\n"
+        "    ['f'] = 15, ['F'] = 15,\n"
         "}"
     );
     test_expr("b = pt.x");
