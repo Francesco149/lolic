@@ -1961,7 +1961,7 @@ void print_expr(expr_t* expr, int indent)
         break;
 
     case EXPR_COMPOUND:
-        printf("(compound\n");
+        printf("(compound");
 
         for (i = 0; i < expr->u.compound.nitems; ++i)
         {
