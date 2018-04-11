@@ -80,6 +80,8 @@ for (int64: i = 0; i < 10; ++i)
 
 // ------------------------------------------------------------------------
 
+// there is no 32-bit float, "float" is just double
+
 double: x = 5.5;
 double: y = 10.123123;
 
