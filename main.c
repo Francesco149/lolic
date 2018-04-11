@@ -1295,13 +1295,13 @@ enum
     EXPR_PUSH64,
 };
 
-struct compoundlit
+struct compoundlit_item
 {
     char* name;
     expr_t* value;
 };
 
-typedef struct compoundlit compoundlit_t;
+typedef struct compoundlit_item compoundlit_item_t;
 
 struct expr
 {
@@ -1346,7 +1346,7 @@ struct expr
 
         struct
         {
-            compoundlit_t* items;
+            compoundlit_item_t* items;
             int nitems;
         }
         compound;
@@ -1482,7 +1482,7 @@ expr_t* expr_call(expr_t* function, expr_t** params, int nparams)
     return res;
 }
 
-expr_t* expr_compound(compoundlit_t* items, int nitems)
+expr_t* expr_compound(compoundlit_item_t* items, int nitems)
 {
     expr_t* res;
 
@@ -1981,7 +1981,7 @@ void print_expr(expr_t* expr, int indent)
 
         for (i = 0; i < expr->u.compound.nitems; ++i)
         {
-            compoundlit_t* it = &expr->u.compound.items[i];
+            compoundlit_item_t* it = &expr->u.compound.items[i];
 
             printf("\n");
             print_indent(indent + 1);
