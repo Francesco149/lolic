@@ -2214,9 +2214,20 @@ void print_stmt_block(stmt_block_t block, int indent)
 
 /* --------------------------------------------------------------------- */
 
-int pmatch(int token)
+typespec_t* find_type(char* name)
 {
-    if (ltok.kind == token)
+    (void)name;
+    return 0; /* TODO */
+}
+
+int ppeek(int kind)
+{
+    return ltok.kind == kind;
+}
+
+int pmatch(int kind)
+{
+    if (ppeek(kind))
     {
         lnext();
         return 1;
@@ -2225,29 +2236,244 @@ int pmatch(int token)
     return 0;
 }
 
-int ppeek(int kind)
-{
-    return ltok.kind == kind;
-}
-
 int prange(int first, int last)
 {
     return ltok.kind >= first && ltok.kind <= last;
 }
 
+int ppeek_kword(char* kword)
+{
+    return ppeek(TOKEN_KWORD) && ltok.u.name == kword;
+}
+
+int pmatch_kword(char* kword)
+{
+    if (ppeek_kword(kword))
+    {
+        lnext();
+        return 1;
+    }
+
+    return 0;
+}
+
 char ebuf[8192];
 
-void pexpect(int kind)
+int pexpect_kword(char* kword)
 {
-    syntax_assertf(pmatch(kind), "unexpected token. got %s, expected %s",
-        ldescribe(&ltok, ebuf), lkindstr(kind, ebuf + 4096));
+    if (!pmatch_kword(kword))
+    {
+        syntax_errorf("unexpected token. got %s, expected keyword %s",
+            ldescribe(&ltok, ebuf), kword);
+        return 0;
+    }
+
+    return 1;
+}
+
+int pexpect(int kind)
+{
+    if (!pmatch(kind))
+    {
+        syntax_errorf("unexpected token. got %s, expected %s",
+            ldescribe(&ltok, ebuf), lkindstr(kind, ebuf + 4096));
+        return 0;
+    }
+
+    return 1;
+}
+
+typespec_t* ptype()
+{
+    return 0; /* TODO */
 }
 
 expr_t* pexpr();
 
+/* "sizeof" '(' (expr | type) ')' */
+expr_t* pexpr_sizeof()
+{
+    pexpect_kword(kword_sizeof);
+
+    pexpect('(');
+
+    if (ppeek(TOKEN_NAME) && find_type(ltok.u.name))
+    {
+        typespec_t* type;
+
+        type = ptype();
+        pexpect(')');
+
+        return expr_sizeof_type(type);
+    }
+
+    else
+    {
+        expr_t* expr;
+
+        expr = pexpr();
+        pexpect(')');
+
+        if (expr->kind != EXPR_NAME || expr->kind != EXPR_FIELD) {
+            syntax_error("sizeof only applies to names and fields");
+        }
+
+        return expr_sizeof_expr(expr);
+    }
+}
+
+/* "offsetof" '(' type ',' field_name ')' */
+expr_t* pexpr_offsetof()
+{
+    typespec_t* type;
+    char* field;
+
+    pexpect_kword(kword_offsetof);
+
+    pexpect('(');
+    type = ptype();
+    pexpect(',');
+
+    field = ltok.u.name;
+
+    if (!pexpect(TOKEN_NAME)) {
+        field = 0;
+    }
+
+    pexpect(')');
+
+    return expr_offsetof(type, field);
+}
+
+/*
+ *   "push8"  '(' expr ',' expr ')'
+ * | "push16" '(' expr ',' expr ')'
+ * | "push32" '(' expr ',' expr ')'
+ * | "push64" '(' expr ',' expr ')'
+ */
+expr_t* pexpr_push()
+{
+    int bits = 0;
+    expr_t* dst;
+    expr_t* src;
+
+         if (pmatch_kword(kword_push8 )) bits =  8;
+    else if (pmatch_kword(kword_push16)) bits = 16;
+    else if (pmatch_kword(kword_push32)) bits = 32;
+    else if (pmatch_kword(kword_push64)) bits = 64;
+
+    pexpect('(');
+    dst = pexpr();
+    pexpect(',');
+    src = pexpr();
+    pexpect(')');
+
+    return expr_push(bits, dst, src);
+}
+
+/*
+ * compoundlit_item = ('.' field_name '=')? expr
+ * | '{' (compoundlit_item (',' compoundlit_item)* ','?)? '}'
+ */
+expr_t* pexpr_compound()
+{
+    compoundlit_item_t* items = 0;
+
+    pexpect('{');
+
+    do
+    {
+        char* name = 0;
+        expr_t* value;
+
+        if (ppeek('}')) {
+            break;
+        }
+
+        if (pmatch('.'))
+        {
+            name = ltok.u.name;
+            pexpect(TOKEN_NAME);
+            pexpect(TOKEN_EQ);
+        }
+
+        value = pexpr();
+
+        bpush(items, (compoundlit_item_t){name, value});
+    }
+    while(pmatch(','));
+
+    pexpect('}');
+
+    return expr_compound(items, blen(items));
+}
+
 expr_t* pexpr_primitive()
 {
-    return 0; /* TODO */
+    if (ppeek(TOKEN_INT))
+    {
+        uint64_t u64;
+
+        u64 = ltok.u.u64;
+        lnext();
+
+        return expr_int(u64);
+    }
+
+    if (ppeek(TOKEN_FLOAT))
+    {
+        double f64;
+
+        f64 = ltok.u.f64;
+        lnext();
+
+        return expr_float(f64);
+    }
+
+    if (pmatch_kword(kword_toint)) {
+        return expr_toint(pexpr());
+    }
+
+    if (pmatch_kword(kword_tofloat)) {
+        return expr_tofloat(pexpr());
+    }
+
+    if (ppeek_kword(kword_sizeof)) {
+        return pexpr_sizeof();
+    }
+
+    if (ppeek_kword(kword_offsetof)) {
+        return pexpr_offsetof();
+    }
+
+    if (ppeek_kword(kword_push8) ||
+        ppeek_kword(kword_push16) ||
+        ppeek_kword(kword_push32) ||
+        ppeek_kword(kword_push64))
+    {
+        return pexpr_push();
+    }
+
+    if (ppeek('{')) {
+        return pexpr_compound();
+    }
+
+    if (pmatch('('))
+    {
+        expr_t* expr;
+
+        expr = pexpr();
+        pexpect(')');
+
+        return expr;
+    }
+
+    syntax_errorf("unexpected token %s in expression",
+        ldescribe(&ltok, ebuf));
+
+    exit(1);
+
+    return 0;
 }
 
 /*
