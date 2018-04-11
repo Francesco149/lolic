@@ -2736,7 +2736,7 @@ void test_p()
         ")"
     );
     test_expr("push8(p, 0755)");
-    test_expr("push16(p, 0b1000000000000000");
+    test_expr("push16(p, 0b1000000000000000)");
     test_expr("push32(p, 0xAABBCCDD)");
     test_expr("push64(p, 6000000000)");
     test_expr("push64(p, push8(p, 10))");
