@@ -2763,6 +2763,23 @@ void test_p()
     test_expr("a || !b ? x * -z : a + +y");
     test_expr("p = &var");
     test_expr("value = *p");
+    test_expr("point = {}");
+    test_expr("point = { x, y }");
+    test_expr(
+        "rect = {\n"
+        "   x, y,\n"
+        "   x + width,\n"
+        "   y + height,\n"
+        "}"
+    );
+    test_expr(
+        "rect = {\n"
+        "   .left = x,\n"
+        "   .top = y,\n"
+        "   .right = x + width,\n"
+        "   .bottom = y + height,\n"
+        "}"
+    );
 }
 
 /* --------------------------------------------------------------------- */
