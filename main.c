@@ -2070,13 +2070,13 @@ void print_expr(expr_t* expr, int indent)
         break;
 
     case EXPR_TOINT:
-        printf("(int ");
+        printf("(toint ");
         print_expr(expr->u.expr, indent);
         printf(")");
         break;
 
     case EXPR_TOFLOAT:
-        printf("(float ");
+        printf("(tofloat ");
         print_expr(expr->u.expr, indent);
         printf(")");
         break;
