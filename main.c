@@ -3141,10 +3141,10 @@ void test_p()
 
     test_stmt(
         "{\n"
-        "    int: a = 42;\n"
-        "    float: b = tofloat(a);\n"
+        "    float: b = 42.42;\n"
+        "    int: a = toint(b);\n"
         "    struct point { int: x; int: y; };\n"
-        "    point: pt = { 10, 20 };\n"
+        "    point: pt = { 10 + a, 20 };\n"
         "}"
     );
 }
