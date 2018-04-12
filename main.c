@@ -3145,6 +3145,7 @@ void test_p()
         "    int: a = toint(b);\n"
         "    struct point { int: x; int: y; };\n"
         "    point: pt = { 10 + a, 20 };\n"
+        "    struct { int: x; int: y; int: z; }: v3;\n"
         "}"
     );
 }
