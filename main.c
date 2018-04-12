@@ -1899,14 +1899,12 @@ void print_decl(decl_t* decl, int indent)
 {
     int i;
 
-    print_indent(indent);
-
     switch (decl->kind)
     {
     case DECL_VAR:
         printf("(");
         print_typespec(decl->u.var.type, indent);
-        printf(" %s ", decl->name);
+        printf(" %s ", decl->name ? decl->name : "nil");
 
         if (decl->u.var.expr) {
             print_expr(decl->u.var.expr, indent);
@@ -2161,15 +2159,11 @@ void print_stmt(stmt_t* stmt, int indent)
         break;
 
     case STMT_BLOCK:
-        printf("(do\n");
+        printf("(do");
 
         for (i = 0; i < stmt->u.block.nstmts; ++i)
         {
-            if (i) {
-                printf("\n");
-                print_indent(indent + 1);
-            }
-
+            printf("\n");
             print_stmt(stmt->u.block.stmts[i], indent + 1);
         }
 
