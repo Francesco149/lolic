@@ -416,6 +416,9 @@ char* kword_continue;
 char* kword_fallthrough;
 char* kword_return;
 
+char* kword_struct;
+char* kword_union;
+
 void linit()
 {
     int nblocks;
@@ -447,10 +450,13 @@ void linit()
     init_kword(fallthrough);
     init_kword(return);
 
+    init_kword(struct);
+    init_kword(union);
+
     assert(blen(intern_allocator.chunks) == nblocks);
 
     first_kword = kword_toint;
-    last_kword = kword_return;
+    last_kword = kword_union;
 }
 
 void lnext();
@@ -1074,9 +1080,11 @@ void* ast_dup_n(void* p, int n)
 /* --------------------------------------------------------------------- */
 
 struct expr;
-typedef struct expr expr_t;
-
+struct decl;
 struct typespec;
+
+typedef struct expr expr_t;
+typedef struct decl decl_t;
 typedef struct typespec typespec_t;
 
 enum
@@ -1085,6 +1093,8 @@ enum
     TYPE_NAME,
     TYPE_ARRAY,
     TYPE_PTR,
+    TYPE_STRUCT,
+    TYPE_UNION,
 };
 
 struct typespec
@@ -1103,6 +1113,14 @@ struct typespec
         array;
 
         typespec_t* pointed;
+
+        struct
+        {
+            char* name;
+            decl_t** fields;
+            int nfields;
+        }
+        aggregate;
     }
     u;
 };
@@ -1148,6 +1166,20 @@ typespec_t* typespec_ptr(typespec_t* pointed)
     return res;
 }
 
+typespec_t* typespec_aggregate(int kind, char* name, decl_t** fields,
+    int nfields)
+{
+    typespec_t* res;
+
+    assert(kind == TYPE_STRUCT || kind == TYPE_UNION);
+    res = typespec(kind);
+    res->u.aggregate.name = name;
+    res->u.aggregate.fields = ast_dup(fields, nfields);
+    res->u.aggregate.nfields = nfields;
+
+    return res;
+}
+
 /* --------------------------------------------------------------------- */
 
 struct stmt;
@@ -1157,8 +1189,6 @@ enum
 {
     DECL_NONE,
     DECL_VAR,
-    DECL_STRUCT,
-    DECL_UNION,
     DECL_ENUM,
     DECL_FUNC,
 };
@@ -1169,12 +1199,6 @@ struct enum_item
     expr_t* value;
 };
 
-struct aggregate_field
-{
-    char* name;
-    typespec_t* type;
-};
-
 struct func_param
 {
     char* name;
@@ -1183,7 +1207,6 @@ struct func_param
 };
 
 typedef struct enum_item enum_item_t;
-typedef struct aggregate_field aggregate_field_t;
 typedef struct func_param func_param_t;
 
 struct decl
@@ -1199,13 +1222,6 @@ struct decl
             typespec_t* type;
         }
         var;
-
-        struct
-        {
-            aggregate_field_t* fields;
-            int nfields;
-        }
-        aggregate;
 
         struct
         {
@@ -1226,8 +1242,6 @@ struct decl
     u;
 };
 
-typedef struct decl decl_t;
-
 decl_t* decl(int kind, char* name)
 {
     decl_t* res;
@@ -1246,19 +1260,6 @@ decl_t* decl_var(char* name, expr_t* expr, typespec_t* type)
     res = decl(DECL_VAR, name);
     res->u.var.expr = expr;
     res->u.var.type = type;
-
-    return res;
-}
-
-decl_t* decl_aggregate(int kind, char* name, aggregate_field_t* fields,
-    int nfields)
-{
-    decl_t* res;
-
-    assert(kind == DECL_STRUCT || kind == DECL_UNION);
-    res = decl(kind, name);
-    res->u.aggregate.fields = ast_dup(fields, nfields);
-    res->u.aggregate.nfields = nfields;
 
     return res;
 }
@@ -1842,9 +1843,12 @@ void print_indent(int indent)
 }
 
 void print_expr(expr_t* expr, int indent);
+void print_decl(decl_t* decl, int indent);
 
 void print_typespec(typespec_t* type, int indent)
 {
+    int i;
+
     switch (type->kind)
     {
     case TYPE_NAME:
@@ -1862,6 +1866,28 @@ void print_typespec(typespec_t* type, int indent)
     case TYPE_PTR:
         printf("(ptr ");
         print_typespec(type->u.pointed, indent);
+        printf(")");
+        break;
+
+    case TYPE_STRUCT:
+    case TYPE_UNION:
+        if (type->kind == TYPE_STRUCT) {
+            printf("(struct ");
+        } else {
+            printf("(union ");
+        }
+
+        printf("%s", type->u.aggregate.name);
+
+        for (i = 0; i < type->u.aggregate.nfields; ++i)
+        {
+            decl_t* it = type->u.aggregate.fields[i];
+
+            printf("\n");
+            print_indent(indent + 1);
+            print_decl(it, indent);
+        }
+
         printf(")");
         break;
     }
@@ -1886,28 +1912,6 @@ void print_decl(decl_t* decl, int indent)
             print_expr(decl->u.var.expr, indent);
         } else {
             printf("nil");
-        }
-
-        printf(")");
-        break;
-
-    case DECL_STRUCT:
-    case DECL_UNION:
-        if (decl->kind == DECL_STRUCT) {
-            printf("(struct %s", decl->name);
-        } else {
-            printf("(union %s", decl->name);
-        }
-
-        for (i = 0; i < decl->u.aggregate.nfields; ++i)
-        {
-            aggregate_field_t* it = &decl->u.aggregate.fields[i];
-
-            printf("\n");
-            print_indent(indent + 1);
-            printf("(");
-            print_typespec(it->type, indent);
-            printf(" %s)", it->name);
         }
 
         printf(")");
