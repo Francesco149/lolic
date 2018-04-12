@@ -2327,18 +2327,79 @@ int pexpect(int kind)
 }
 
 expr_t* pexpr();
+decl_t* pdecl_var();
 
-/* name ('*' | '[' expr ']')* */
+/*
+ * (("struct" | "union") name? '{' decl_var ';')* '}')
+ * | (name ('*' | '[' expr ']')*)
+ */
 typespec_t* ptype()
 {
     typespec_t* res;
-    char* name;
+    char* name = 0;
 
-    name = ltok.u.name;
-    res = typespec_name(name);
+    if (ppeek_kword(kword_struct) || ppeek_kword(kword_union))
+    {
+        int kind;
+        decl_t** decls = 0;
 
-    if (!pexpect(TOKEN_NAME)) {
-        name = 0;
+        if (pmatch_kword(kword_struct)) {
+            kind = TYPE_STRUCT;
+        }
+
+        else if (pmatch_kword(kword_union)) {
+            kind = TYPE_UNION;
+        }
+
+        else {
+            assert(0);
+        }
+
+        name = ltok.u.name;
+
+        if (!pmatch(TOKEN_NAME)) {
+            name = 0;
+        }
+
+        if (!pmatch('{')) {
+            res = 0;
+            goto cleanup;
+        }
+
+        do
+        {
+            if (ppeek('}')) {
+                break;
+            }
+
+            bpush(decls, pdecl_var());
+        }
+        while (pmatch(';'));
+
+        if (!pmatch('}')) {
+            res = 0;
+            goto cleanup;
+        }
+
+        res = typespec_aggregate(kind, name, decls, blen(decls));
+
+    cleanup:
+        bfree(decls);
+
+        if (!res) {
+            return 0;
+        }
+    }
+
+    else
+    {
+        name = ltok.u.name;
+
+        if (!pmatch(TOKEN_NAME)) {
+            name = 0;
+        }
+
+        res = typespec_name(name);
     }
 
     for (;;)
@@ -2352,7 +2413,9 @@ typespec_t* ptype()
             expr_t* len;
 
             len = pexpr();
-            pexpect(']');
+            if (!pmatch(']')) {
+                return 0;
+            }
 
             res = typespec_array(res, len);
         }
@@ -2803,31 +2866,39 @@ expr_t* pexpr()
     return pexpr_assignment();
 }
 
-/* typespec ':' name ('=' expr)? */
+/*
+ * decl_name = (name ('=' expr)?
+ * typespec (':' decl_name (',' decl_name)*)*)?
+ */
 decl_t* pdecl_var()
 {
     typespec_t* type;
-    char* name;
+    char* name = 0;
     expr_t* expr = 0;
 
     type = ptype();
-    pexpect(':');
-    name = ltok.u.name;
 
-    if (!pexpect(TOKEN_NAME)) {
-        name = 0;
+    if (!type) {
+        return 0;
     }
 
-    if (pmatch(TOKEN_EQ)) {
-        expr = pexpr();
+    /* TODO: handle multiple decls like int: a, b, c */
+    if (pmatch(':'))
+    {
+        name = ltok.u.name;
+
+        pexpect(TOKEN_NAME);
+
+        if (pmatch(TOKEN_EQ)) {
+            expr = pexpr();
+        }
     }
 
     return decl_var(name, expr, type);
 }
 
 /*
- * decl = decl_var
- *      | (("struct" | "union") name '{' decl_var* '}')
+ * TODO:
  *
  * stmt_switch = "switch" '(' expr ')' '{'
  *               ("case" expr ':') | ("default" ':') | stmt
@@ -2842,12 +2913,25 @@ decl_t* pdecl_var()
 
 stmt_t* pstmt_base()
 {
+    char* start;
+    decl_t* decl;
+
     /*
-     * TODO:
-     * gotta look ahead to distinguish between expressions and declarations
-     * because we don't know until we hit the ':', is there a clean way
-     * to do this?
+     * this is a ugly hack to distinguish var decl's from expressions
+     * we look ahead and see if we have a valid decl, otherwise we rewind
+     *
+     * TODO: how can I make this less shitty?
      */
+
+    start = ldata;
+    decl = pdecl_var();
+
+    if (decl) {
+        return stmt_decl(decl);
+    }
+
+    ldata = start;
+
 
     return stmt(STMT_NOOP);
 }
@@ -2967,6 +3051,15 @@ void test_expr(char* code)
     printf("\n\n\n");
 }
 
+void test_stmt(char* code)
+{
+    printf("code:\n%s\n\n", code);
+    lreset(code);
+    printf("syntax tree:\n");
+    print_stmt(pstmt(), 0);
+    printf("\n\n\n");
+}
+
 void test_p()
 {
     test_expr("(a + b + sizeof(c) + (flags & SOME_FLAG ? x : y))");
@@ -3045,6 +3138,15 @@ void test_p()
     );
     test_expr("b = pt.x");
     test_expr("left = rect.lt.x");
+
+    test_stmt(
+        "{\n"
+        "    int: a = 42;\n"
+        "    float: b = tofloat(a);\n"
+        "    struct point { int: x; int: y; };\n"
+        "    point: pt = { 10, 20 };\n"
+        "}"
+    );
 }
 
 /* --------------------------------------------------------------------- */
