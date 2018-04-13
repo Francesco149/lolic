@@ -3174,6 +3174,16 @@ void test_p()
         "    struct point { int: x; int: y; };\n"
         "    point: pt = { 10 + a, 20 };\n"
         "    struct { int: x, y, z; }: v3;\n"
+        "\n"
+        "    struct shape\n"
+        "    {\n"
+        "        int: kind;\n"
+        "        union {\n"
+        "            struct { float: x, y; }: pt;\n"
+        "            struct { float: l, t, r, b; }: rect;\n"
+        "            float: circle_radius;\n"
+        "        }: u;\n"
+        "    };\n"
         "}"
     );
 }
