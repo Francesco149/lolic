@@ -2319,24 +2319,32 @@ int pmatch_kword(char* kword)
 
 char ebuf[8192];
 
-int pexpect_kword(char* kword)
+#define pexpect_kword(kind) pexpect_kword_(__FILE__, __LINE__, kind)
+
+int pexpect_kword_(char* file, int line, char* kword)
 {
     if (!pmatch_kword(kword))
     {
-        syntax_errorf("unexpected token. got %s, expected keyword %s",
-            ldescribe(&ltok, ebuf), kword);
+        syntax_errorf("[%s:%d] unexpected token. got %s, "
+            "expected keyword %s",file, line, ldescribe(&ltok, ebuf),
+            kword);
+        exit(1);
         return 0;
     }
 
     return 1;
 }
 
-int pexpect(int kind)
+#define pexpect(kind) pexpect_(__FILE__, __LINE__, kind)
+
+int pexpect_(char* file, int line, int kind)
 {
     if (!pmatch(kind))
     {
-        syntax_errorf("unexpected token. got %s, expected %s",
-            ldescribe(&ltok, ebuf), lkindstr(kind, ebuf + 4096));
+        syntax_errorf("[%s:%d] unexpected token. got %s, expected %s",
+            file, line, ldescribe(&ltok, ebuf),
+            lkindstr(kind, ebuf + 4096));
+        exit(1);
         return 0;
     }
 
