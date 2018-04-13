@@ -3056,16 +3056,18 @@ stmt_t* pstmt()
         return stmt_loop(STMT_WHILE, cond, body);
     }
 
-    /* "do" '{' stmt '}' "while" '(' expr ')' */
+    /* "do" '{' stmt '}' "while" '(' expr ')' ';' */
     if (pmatch_kword(kword_do))
     {
         stmt_t* body;
         expr_t* cond;
 
         body = pstmt();
+        pexpect_kword(kword_while);
         pexpect('(');
         cond = pexpr();
         pexpect(')');
+        pexpect(';');
 
         return stmt_loop(STMT_DO, cond, body);
     }
