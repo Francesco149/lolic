@@ -2381,15 +2381,15 @@ typespec_t* ptype()
             goto cleanup;
         }
 
-        do
+        while (!ppeek(0) && !ppeek('}'))
         {
-            if (ppeek('}')) {
-                break;
-            }
-
             bpush(decls, pdecl_vars());
+
+            if (!pmatch(';')) {
+                res = 0;
+                goto cleanup;
+            }
         }
-        while (pmatch(';'));
 
         if (!pmatch('}')) {
             res = 0;
