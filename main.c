@@ -1888,7 +1888,7 @@ void print_typespec(typespec_t* type, int indent)
 
             printf("\n");
             print_indent(indent + 1);
-            print_decl(it, indent);
+            print_decl(it, indent + 1);
         }
 
         printf(")");
