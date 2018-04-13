@@ -2393,12 +2393,15 @@ typespec_t* ptype()
 
         while (!ppeek(0) && !ppeek('}'))
         {
-            bpush(decls, pdecl_vars());
+            decl_t* decl;
 
-            if (!pmatch(';')) {
+            decl = pdecl_vars();
+            if (!decl) {
                 res = 0;
                 goto cleanup;
             }
+
+            bpush(decls, decl);
         }
 
         if (!pmatch('}')) {
@@ -2893,7 +2896,7 @@ expr_t* pexpr()
 
 /*
  * decl_name = (name ('=' expr)?
- * typespec (':' decl_name (',' decl_name)*)*)?
+ * typespec (':' decl_name (',' decl_name)*)*)? ';'
  */
 decl_t* pdecl_vars()
 {
@@ -2929,6 +2932,10 @@ decl_t* pdecl_vars()
         while (pmatch(','));
     }
 
+    if (!pmatch(';')) {
+        return 0;
+    }
+
     res = decl_vars(names, blen(names), type);
     bfree(names);
 
@@ -2945,12 +2952,38 @@ decl_t* pdecl_vars()
  *             ("case" expr ':') | ("default" ':') | stmt
  *             '}'
  *
- * stmt_base = '' | decl | "break" | "continue" | "fallthrough" | expr
- *           | ("return" expr) | stmt_do | stmt_switch | stmt_pick
+ * stmt_base = decl | "break" | "continue" | "fallthrough" | expr
+ *           | ("return" expr)
  */
 
 stmt_t* pstmt_base()
 {
+    if (pmatch_kword(kword_break)) {
+        return stmt(STMT_BREAK);
+    }
+
+    else if (pmatch_kword(kword_continue)) {
+        return stmt(STMT_CONTINUE);
+    }
+
+    else if (pmatch_kword(kword_fallthrough)) {
+        return stmt(STMT_FALLTHROUGH);
+    }
+
+    else if (pmatch_kword(kword_return)) {
+        return stmt_return(pexpr());
+    }
+
+    return stmt_expr(pexpr());
+}
+
+/*
+ * decl | '' | stmt_block | stmt_if | stmt_while | stmt_for | stmt_do |
+ * stmt_switch | stmt_pick (stmt_base ';')
+ */
+stmt_t* pstmt()
+{
+    token_t start_tok;
     char* start;
     decl_t* decl;
 
@@ -2961,6 +2994,7 @@ stmt_t* pstmt_base()
      * TODO: how can I make this less shitty?
      */
 
+    start_tok = ltok;
     start = ldata;
     decl = pdecl_vars();
 
@@ -2968,17 +3002,15 @@ stmt_t* pstmt_base()
         return stmt_decl(decl);
     }
 
+    ltok = start_tok;
     ldata = start;
 
+    if (pmatch(';')) {
+        return stmt(STMT_NOOP);
+    }
 
-    return stmt(STMT_NOOP);
-}
-
-/* stmt_block | stmt_if | stmt_while | stmt_for | (stmt_base ';') */
-stmt_t* pstmt()
-{
     /* '{' stmt* '}' ';'* */
-    if (pmatch('{'))
+    else if (pmatch('{'))
     {
         stmt_t** stmts = 0;
 
@@ -3194,6 +3226,18 @@ void test_p()
         "            float: circle_radius;\n"
         "        }: u;\n"
         "    };\n"
+        "\n"
+        "    do\n"
+        "    {\n"
+        "        do_stuff();\n"
+        "        a *= 2;\n"
+        "        if (a > 500) {\n"
+        "            b /= 10;\n"
+        "        } else {\n"
+        "            b += 10;\n"
+        "        }\n"
+        "    }\n"
+        "    while (keep_going);\n"
         "}"
     );
 }
