@@ -1188,12 +1188,12 @@ typedef struct stmt stmt_t;
 enum
 {
     DECL_NONE,
-    DECL_VAR,
+    DECL_VARS,
     DECL_ENUM,
     DECL_FUNC,
 };
 
-struct enum_item
+struct decl_name
 {
     char* name;
     expr_t* value;
@@ -1206,7 +1206,7 @@ struct func_param
     expr_t* default_val;
 };
 
-typedef struct enum_item enum_item_t;
+typedef struct decl_name decl_name_t;
 typedef struct func_param func_param_t;
 
 struct decl
@@ -1218,20 +1218,22 @@ struct decl
     {
         struct
         {
-            expr_t* expr;
             typespec_t* type;
+            decl_name_t* names;
+            int nnames;
         }
-        var;
+        vars;
 
         struct
         {
-            enum_item_t* items;
+            decl_name_t* items;
             int nitems;
         }
         enum_;
 
         struct
         {
+            char* name;
             typespec_t* ret_type;
             func_param_t* params;
             int nparams;
@@ -1242,33 +1244,33 @@ struct decl
     u;
 };
 
-decl_t* decl(int kind, char* name)
+decl_t* decl(int kind)
 {
     decl_t* res;
 
     res = (decl_t*)ast_alloc(sizeof(decl_t));
     res->kind = kind;
-    res->name = name;
 
     return res;
 }
 
-decl_t* decl_var(char* name, expr_t* expr, typespec_t* type)
+decl_t* decl_vars(decl_name_t* names, int nnames, typespec_t* type)
 {
     decl_t* res;
 
-    res = decl(DECL_VAR, name);
-    res->u.var.expr = expr;
-    res->u.var.type = type;
+    res = decl(DECL_VARS);
+    res->u.vars.names = ast_dup(names, nnames);
+    res->u.vars.nnames = nnames;
+    res->u.vars.type = type;
 
     return res;
 }
 
-decl_t* decl_enum(enum_item_t* items, int nitems)
+decl_t* decl_enum(decl_name_t* items, int nitems)
 {
     decl_t* res;
 
-    res = decl(DECL_ENUM, 0);
+    res = decl(DECL_ENUM);
     res->u.enum_.items = ast_dup(items, nitems);
     res->u.enum_.nitems = nitems;
 
@@ -1280,7 +1282,8 @@ decl_t* decl_func(char* name, typespec_t* ret_type, func_param_t* params,
 {
     decl_t* res;
 
-    res = decl(DECL_FUNC, name);
+    res = decl(DECL_FUNC);
+    res->u.func.name = name;
     res->u.func.ret_type = ret_type;
     res->u.func.params = ast_dup(params, nparams);
     res->u.func.nparams = nparams;
@@ -1901,15 +1904,27 @@ void print_decl(decl_t* decl, int indent)
 
     switch (decl->kind)
     {
-    case DECL_VAR:
+    case DECL_VARS:
         printf("(");
-        print_typespec(decl->u.var.type, indent);
-        printf(" %s ", decl->name ? decl->name : "nil");
+        print_typespec(decl->u.vars.type, indent);
 
-        if (decl->u.var.expr) {
-            print_expr(decl->u.var.expr, indent);
-        } else {
-            printf("nil");
+        if (!decl->u.vars.nnames) {
+            printf(" nil");
+        }
+
+        else for (i = 0; i < decl->u.vars.nnames; ++i)
+        {
+            decl_name_t* name = &decl->u.vars.names[i];
+
+            printf(" (%s ", name->name);
+
+            if (name->value) {
+                print_expr(name->value, indent);
+            } else {
+                printf("nil");
+            }
+
+            printf(")");
         }
 
         printf(")");
@@ -1920,7 +1935,7 @@ void print_decl(decl_t* decl, int indent)
 
         for (i = 0; i < decl->u.enum_.nitems; ++i)
         {
-            enum_item_t* it = &decl->u.enum_.items[i];
+            decl_name_t* it = &decl->u.enum_.items[i];
 
             printf("\n");
             print_indent(indent + 1);
@@ -2327,10 +2342,10 @@ int pexpect(int kind)
 }
 
 expr_t* pexpr();
-decl_t* pdecl_var();
+decl_t* pdecl_vars();
 
 /*
- * (("struct" | "union") name? '{' decl_var ';')* '}')
+ * (("struct" | "union") name? '{' decl_vars ';')* '}')
  * | (name ('*' | '[' expr ']')*)
  */
 typespec_t* ptype()
@@ -2372,7 +2387,7 @@ typespec_t* ptype()
                 break;
             }
 
-            bpush(decls, pdecl_var());
+            bpush(decls, pdecl_vars());
         }
         while (pmatch(';'));
 
@@ -2870,11 +2885,11 @@ expr_t* pexpr()
  * decl_name = (name ('=' expr)?
  * typespec (':' decl_name (',' decl_name)*)*)?
  */
-decl_t* pdecl_var()
+decl_t* pdecl_vars()
 {
+    decl_t* res;
     typespec_t* type;
-    char* name = 0;
-    expr_t* expr = 0;
+    decl_name_t* names = 0;
 
     type = ptype();
 
@@ -2882,19 +2897,32 @@ decl_t* pdecl_var()
         return 0;
     }
 
-    /* TODO: handle multiple decls like int: a, b, c */
     if (pmatch(':'))
     {
-        name = ltok.u.name;
+        do
+        {
+            char* name;
+            expr_t* expr = 0;
 
-        pexpect(TOKEN_NAME);
+            name = ltok.u.name;
 
-        if (pmatch(TOKEN_EQ)) {
-            expr = pexpr();
+            if (!pexpect(TOKEN_NAME)) {
+                name = 0;
+            }
+
+            if (pmatch(TOKEN_EQ)) {
+                expr = pexpr();
+            }
+
+            bpush(names, (decl_name_t){name, expr});
         }
+        while (pmatch(','));
     }
 
-    return decl_var(name, expr, type);
+    res = decl_vars(names, blen(names), type);
+    bfree(names);
+
+    return res;
 }
 
 /*
@@ -2924,7 +2952,7 @@ stmt_t* pstmt_base()
      */
 
     start = ldata;
-    decl = pdecl_var();
+    decl = pdecl_vars();
 
     if (decl) {
         return stmt_decl(decl);
@@ -3145,7 +3173,7 @@ void test_p()
         "    int: a = toint(b);\n"
         "    struct point { int: x; int: y; };\n"
         "    point: pt = { 10 + a, 20 };\n"
-        "    struct { int: x; int: y; int: z; }: v3;\n"
+        "    struct { int: x, y, z; }: v3;\n"
         "}"
     );
 }
