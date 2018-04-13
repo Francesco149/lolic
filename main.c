@@ -2193,16 +2193,14 @@ void print_stmt(stmt_t* stmt, int indent)
         printf("(if ");
         print_expr(stmt->u.if_.cond, indent);
         printf("\n");
-        print_indent(indent);
-
-        printf("(then\n");
-        print_stmt(stmt->u.if_.then, indent + 1);
-        printf(")");
+        print_stmt(stmt->u.if_.then, indent);
 
         if (stmt->u.if_.else_)
         {
+            printf("\n");
+            print_indent(indent);
             printf("(else\n");
-            print_stmt(stmt->u.if_.else_, indent + 1);
+            print_stmt(stmt->u.if_.else_, indent);
             printf(")");
         }
 
@@ -2220,9 +2218,9 @@ void print_stmt(stmt_t* stmt, int indent)
 
     case STMT_DO:
         printf("(loop\n");
-        printf("(do\n");
-        print_stmt(stmt->u.loop.body, indent + 1);
-        printf(")\n");
+        print_stmt(stmt->u.loop.body, indent);
+        printf("\n");
+        print_indent(indent);
         printf("(while ");
         print_expr(stmt->u.loop.cond, indent);
         printf("))");
