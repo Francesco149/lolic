@@ -1880,7 +1880,11 @@ void print_typespec(typespec_t* type, int indent)
             printf("(union ");
         }
 
-        printf("%s", type->u.aggregate.name);
+        if (type->u.aggregate.name) {
+            printf("%s", type->u.aggregate.name);
+        } else {
+            printf("nil");
+        }
 
         for (i = 0; i < type->u.aggregate.nfields; ++i)
         {
